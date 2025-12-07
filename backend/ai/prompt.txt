@@ -1,0 +1,43 @@
+{
+  "instructions": "You will be provided with user inputs specifying the story parameters. Use these inputs to generate a fully nested, branching interactive story JSON compatible with a React Episodes component that expects episodes nested inside choices. Engage the user-provided parameters carefully and tailor the story structure accordingly.",
+  
+  "user_inputs": {
+    "theme": "Adventure",
+    "main characters": "4+",
+    "total_episodes": "4",
+    "choices_per_episode": "2",
+    "words_per_episode": "200-250",
+    "tone": "Lucid",
+    "setting": "Tropical Island",
+    "audience": "Teens (ages 13-18)",
+    "use_emojis": "Yes, use liberally"
+  },
+  
+  "generation_requirements": {
+    "story_format": "JSON",
+    "episode_structure": {
+      "episode_id": {
+        "title": "String with emojis if enabled",
+        "story": "String with vivid imagery and emotional depth, matching words_per_episode",
+        "choices": {
+          "<choice_text>": {
+            "<next_episode_id>": { /* full nested episode object */ }
+          }
+          // Number of choices = choices_per_episode, except endings which have empty choices {}
+        }
+      }
+    },
+    "constraints": [
+      "Use exactly the number of total_episodes and choices_per_episode as specified by the user",
+      "Episode IDs must be unique and follow a logical pattern (e.g., episode_1, episode_2b, episode_3c, etc.)",
+      "Fully nest each next episode inside the choice that leads to it",
+      "Endings have empty choices {}",
+      "Use vivid, immersive storytelling with emotional depth",
+      "Use emojis liberally if user requested"
+    ]
+  },
+  
+  "example_binary_tree_mermaid": "```mermaid\ngraph TD\n  E1[episode_1]\n  E2[episode_2]\n  E3[episode_3]\n  E4[episode_4]\n  E5[episode_5]\n  E6[episode_6]\n  E7[episode_7]\n  E8[episode_8 (ending)]\n  E9[episode_9 (ending)]\n  E10[episode_10 (ending)]\n  E11[episode_11 (ending)]\n  E12[episode_12 (ending)]\n  E13[episode_13 (ending)]\n  E14[episode_14 (ending)]\n  E15[episode_15 (ending)]\n\n  E1 -->|choice_1| E2\n  E1 -->|choice_2| E3\n\n  E2 -->|choice_1| E4\n  E2 -->|choice_2| E5\n\n  E3 -->|choice_1| E6\n  E3 -->|choice_2| E7\n\n  E4 -->|choice_1| E8\n  E4 -->|choice_2| E9\n\n  E5 -->|choice_1| E10\n  E5 -->|choice_2| E11\n\n  E6 -->|choice_1| E12\n  E6 -->|choice_2| E13\n\n  E7 -->|choice_1| E14\n  E7 -->|choice_2| E15\n```",
+  
+  "note_to_model": "Adapt the example binary tree above to match the exact number of episodes and choices per episode specified by the user. The JSON output must strictly follow the nested episode-inside-choice pattern shown. Do not hardcode episode counts or choices; always use the user inputs to generate the branching structure."
+}
