@@ -1,6 +1,12 @@
 import React, { useState, Fragment } from "react";
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
-import { Check, ChevronsUpDown } from "lucide-react"; // icons for dropdown
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+  Transition,
+} from "@headlessui/react";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 const options = {
   theme: [
@@ -17,7 +23,7 @@ const options = {
   ],
   mainCharacters: ["1", "2", "3", "4"],
   episodes: ["2", "3", "4"],
-  wordsPerEpisode:["50-100", "100-150", "150-200", "200-250"],
+  wordsPerEpisode: ["50-100", "100-150", "150-200", "200-250"],
   choicesPerEpisode: ["2"],
   tone: [
     "Lucid 😊",
@@ -46,7 +52,7 @@ const options = {
     "All Ages",
   ],
   emojis: ["Yes, use liberally 🎉✨", "Use sparingly 🙂", "No emojis ❌"],
-  outputFormat: ["JSON", "Python Dictionary"],
+  outputFormat: ["JSON", "Python Dictionary"], // NOTE: This field is not sent to backend (UserRequest doesn't have it)
   specialRequests: [
     "None",
     "No violence 🚫🔫",
@@ -59,19 +65,7 @@ const options = {
   ],
 };
 
-function Dropdown({
-  label,
-  options,
-  selected,
-  setSelected,
-  id,
-}: {
-  label: string;
-  options: string[];
-  selected: string;
-  setSelected: (val: string) => void;
-  id: string;
-}) {
+function Dropdown({ label, options, selected, setSelected, id }) {
   return (
     <div className="w-full">
       <label
@@ -141,12 +135,13 @@ function Dropdown({
   );
 }
 
-const PromptSpace = () => {
+// Ensure the component accepts the new onStoryGenerated prop
+const PromptSpace = ({ onGenerate, onStoryGenerated }) => { 
   // State hooks for all dropdowns
   const [theme, setTheme] = useState(options.theme[4]);
   const [mainCharacters, setMainCharacters] = useState(options.mainCharacters[2]);
   const [episodes, setEpisodes] = useState(options.episodes[2]);
-  const[wordsPerEpisode, setWordsPerEpisode] = useState(options.wordsPerEpisode[3])
+  const [wordsPerEpisode, setWordsPerEpisode] = useState(options.wordsPerEpisode[3]);
   const [choicesPerEpisode, setChoicesPerEpisode] = useState(
     options.choicesPerEpisode[0]
   );
@@ -154,10 +149,74 @@ const PromptSpace = () => {
   const [setting, setSetting] = useState(options.setting[6]);
   const [audience, setAudience] = useState(options.audience[1]);
   const [emojis, setEmojis] = useState(options.emojis[0]);
-  //const [outputFormat, setOutputFormat] = useState(options.outputFormat[0]);
   const [specialRequests, setSpecialRequests] = useState(
     options.specialRequests[0]
   );
+  const [additionalInstructions, setAdditionalInstructions] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // New state for loading
+
+  const handleGenerate = async () => {
+    // 1. Construct the prompt object matching the UserRequest Pydantic model
+    const userRequestPayload = {
+      theme,
+      mainCharacters: parseInt(mainCharacters), // Ensure numbers are sent as integers
+      episodes: parseInt(episodes),             // Ensure numbers are sent as integers
+      wordsPerEpisode,
+      choicesPerEpisode: parseInt(choicesPerEpisode), // Ensure numbers are sent as integers
+      tone,
+      setting,
+      audience,
+      emojis,
+      specialRequests,
+      additionalInstructions
+    };
+    
+    setIsLoading(true); // Start loading
+
+    try{
+      // 2. Call the FastAPI endpoint that triggers the AI generation
+      const response = await fetch("http://127.0.0.1:8000/userpromptreceived", { // Corrected endpoint
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userRequestPayload), // Send the structured user data
+      });
+
+      if(response.ok){
+        // SUCCESS PATH (HTTP 200)
+        const data = await response.json();
+        
+        // Data should be {"response": "<RAW_AI_JSON_STRING>"}
+        const rawAiResponse = data.response; 
+
+        try {
+            const storyDataObject = JSON.parse(rawAiResponse);
+            onStoryGenerated(storyDataObject); 
+            onGenerate();
+        } catch (jsonError) {
+            console.error("Error parsing AI response JSON:", rawAiResponse, jsonError);
+            alert(`Error: Invalid JSON received from AI. Raw response: ${rawAiResponse}`);
+        }
+
+      } else {
+        // ERROR PATH (HTTP 500)
+        const errorData = await response.json();
+        
+        // Check for the 'detail' field returned by FastAPI's HTTPException
+        const errorMessage = errorData.detail || `HTTP Error ${response.status}: ${response.statusText}`;
+
+        // Display the correct error message from the backend
+        throw new Error(errorMessage); 
+      }    }
+    catch(error){
+      console.error(error);
+      alert(`Failed to generate story: ${error.message}`);
+    }
+    finally {
+        setIsLoading(false); // Stop loading regardless of success/failure
+    }
+  };
 
   return (
     <div className="flex flex-row justify-center items-start p-6 bg-purple-50 min-h-screen">
@@ -165,7 +224,8 @@ const PromptSpace = () => {
         <h1 className="text-center text-3xl font-semibold text-purple-800 mb-8">
           Interactive Story Generator
         </h1>
-        <form className="space-y-6">
+        {/* Pass the form handler to the onSubmit */}
+        <form className="space-y-6" onSubmit={(e) => {e.preventDefault(); handleGenerate();}}> 
           <Dropdown
             label="Theme / Genre:"
             options={options.theme}
@@ -231,13 +291,6 @@ const PromptSpace = () => {
             setSelected={setEmojis}
             id="emojis"
           />
-          {/*<Dropdown
-            label="Output Format:"
-            options={options.outputFormat}
-            selected={outputFormat}
-            setSelected={setOutputFormat}
-            id="outputFormat"
-          />*/}
           <Dropdown
             label="Special Requests / Constraints (optional):"
             options={options.specialRequests}
@@ -256,15 +309,18 @@ const PromptSpace = () => {
               id="prompt-area"
               name="prompt-area"
               rows={5}
+              value={additionalInstructions}
+              onChange={(e)=>{setAdditionalInstructions(e.target.value)}}
               placeholder="Enter your story prompt or any extra instructions here..."
               className="w-full rounded-md border-2 border-gray-300 p-3 resize-y focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <button
             type="submit"
-            className="w-full rounded-md bg-purple-800 py-3 text-white font-semibold hover:bg-purple-600 transition"
+            className="w-full rounded-md bg-purple-800 py-3 text-white font-semibold hover:bg-purple-600 transition disabled:bg-purple-400"
+            disabled={isLoading} // Disable button while loading
           >
-            Generate Magic
+            {isLoading ? "Generating..." : "Generate Magic"}
           </button>
         </form>
       </div>
