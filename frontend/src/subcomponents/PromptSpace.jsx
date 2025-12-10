@@ -52,7 +52,7 @@ const options = {
     "All Ages",
   ],
   emojis: ["Yes, use liberally 🎉✨", "Use sparingly 🙂", "No emojis ❌"],
-  outputFormat: ["JSON", "Python Dictionary"], // NOTE: This field is not sent to backend (UserRequest doesn't have it)
+  outputFormat: ["JSON", "Python Dictionary"],
   specialRequests: [
     "None",
     "No violence 🚫🔫",
@@ -135,13 +135,12 @@ function Dropdown({ label, options, selected, setSelected, id }) {
   );
 }
 
-// Ensure the component accepts the new onStoryGenerated prop
-const PromptSpace = ({ onGenerate, onStoryGenerated }) => { 
+const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
   // State hooks for all dropdowns
   const [theme, setTheme] = useState(options.theme[4]);
   const [mainCharacters, setMainCharacters] = useState(options.mainCharacters[2]);
-  const [episodes, setEpisodes] = useState(options.episodes[2]);
-  const [wordsPerEpisode, setWordsPerEpisode] = useState(options.wordsPerEpisode[3]);
+  const [episodes, setEpisodes] = useState(options.episodes[0]);
+  const [wordsPerEpisode, setWordsPerEpisode] = useState(options.wordsPerEpisode[1]);
   const [choicesPerEpisode, setChoicesPerEpisode] = useState(
     options.choicesPerEpisode[0]
   );
@@ -152,70 +151,92 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
   const [specialRequests, setSpecialRequests] = useState(
     options.specialRequests[0]
   );
-  const [additionalInstructions, setAdditionalInstructions] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // New state for loading
+  const [additionalInstructions, setAdditionalInstructions] = useState("None");
+  const [isGenerating, setIsGenerating] = useState(false); // Add loading state
 
   const handleGenerate = async () => {
-    // 1. Construct the prompt object matching the UserRequest Pydantic model
-    const userRequestPayload = {
-      theme,
-      mainCharacters: parseInt(mainCharacters), // Ensure numbers are sent as integers
-      episodes: parseInt(episodes),             // Ensure numbers are sent as integers
-      wordsPerEpisode,
-      choicesPerEpisode: parseInt(choicesPerEpisode), // Ensure numbers are sent as integers
-      tone,
-      setting,
-      audience,
-      emojis,
-      specialRequests,
-      additionalInstructions
-    };
+  const request = {
+    theme,
+    mainCharacters,
+    episodes,
+    wordsPerEpisode,
+    choicesPerEpisode,
+    tone,
+    setting,
+    audience,
+    emojis,
+    specialRequests,
+    additionalInstructions
+  };
+  
+  console.log("Sending request:", request); // Add this
+  
+  try {
+    setIsGenerating(true); // Start loading
+    if (onGenerate) onGenerate(); // Notify parent about generation start
     
-    setIsLoading(true); // Start loading
-
-    try{
-      // 2. Call the FastAPI endpoint that triggers the AI generation
-      const response = await fetch("http://127.0.0.1:8000/userpromptreceived", { // Corrected endpoint
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userRequestPayload), // Send the structured user data
-      });
-
-      if(response.ok){
-        // SUCCESS PATH (HTTP 200)
-        const data = await response.json();
-        
-        // Data should be {"response": "<RAW_AI_JSON_STRING>"}
-        const rawAiResponse = data.response; 
-
+    const response = await fetch("http://127.0.0.1:8000/set_magic", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+    
+    console.log("Response status:", response.status); // Add this
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log("API response data:", data); // Add this to see full response
+      
+      if (data.story && typeof data.story === 'object') {
+        console.log("Story is object:", data.story); // Add this
+        // Pass the story data to parent
+        if (onStoryGenerated) onStoryGenerated(data.story);
+      } else if (data.story && typeof data.story === 'string') {
+        console.log("Story is string:", data.story.substring(0, 100) + "..."); // Add this
         try {
-            const storyDataObject = JSON.parse(rawAiResponse);
-            onStoryGenerated(storyDataObject); 
-            onGenerate();
-        } catch (jsonError) {
-            console.error("Error parsing AI response JSON:", rawAiResponse, jsonError);
-            alert(`Error: Invalid JSON received from AI. Raw response: ${rawAiResponse}`);
+          const parsedStory = JSON.parse(data.story);
+          console.log("Parsed story:", parsedStory); // This should now show
+          if (onStoryGenerated) onStoryGenerated(parsedStory);
+        } catch (error) {
+          console.error("JSON parse error:", error); // Add this
+          console.error("String that failed to parse:", data.story); // Add this
+          alert(`Error parsing story: ${error.message}`);
+          // Reset loading state on error
+          setIsGenerating(false);
+          if (onStoryGenerated) onStoryGenerated({});
         }
-
       } else {
-        // ERROR PATH (HTTP 500)
-        const errorData = await response.json();
-        
-        // Check for the 'detail' field returned by FastAPI's HTTPException
-        const errorMessage = errorData.detail || `HTTP Error ${response.status}: ${response.statusText}`;
+        console.error("No story in response:", data); // Add this
+        alert("No story data received from server");
+        setIsGenerating(false);
+        if (onStoryGenerated) onStoryGenerated({});
+      }
+    } else {
+      console.error("Response not OK:", response.status); // Add this
+      const errorText = await response.text();
+      console.error("Error response text:", errorText); // Add this
+      let errorMessage = response.statusText;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // Not JSON
+      }
+      throw new Error(errorMessage);
+    }
+  } catch(error) {
+    console.error("Fetch error:", error); // Add this
+    alert(`Error: ${error.message}`);
+    setIsGenerating(false); // Stop loading on error
+    if (onStoryGenerated) onStoryGenerated({});
+  }
+};
 
-        // Display the correct error message from the backend
-        throw new Error(errorMessage); 
-      }    }
-    catch(error){
-      console.error(error);
-      alert(`Failed to generate story: ${error.message}`);
-    }
-    finally {
-        setIsLoading(false); // Stop loading regardless of success/failure
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await handleGenerate();
   };
 
   return (
@@ -224,8 +245,7 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
         <h1 className="text-center text-3xl font-semibold text-purple-800 mb-8">
           Interactive Story Generator
         </h1>
-        {/* Pass the form handler to the onSubmit */}
-        <form className="space-y-6" onSubmit={(e) => {e.preventDefault(); handleGenerate();}}> 
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <Dropdown
             label="Theme / Genre:"
             options={options.theme}
@@ -317,10 +337,10 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
           </div>
           <button
             type="submit"
-            className="w-full rounded-md bg-purple-800 py-3 text-white font-semibold hover:bg-purple-600 transition disabled:bg-purple-400"
-            disabled={isLoading} // Disable button while loading
+            className="w-full rounded-md bg-purple-800 py-3 text-white font-semibold hover:bg-purple-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isGenerating}
           >
-            {isLoading ? "Generating..." : "Generate Magic"}
+            {isGenerating ? "Generating..." : "Generate Magic"}
           </button>
         </form>
       </div>

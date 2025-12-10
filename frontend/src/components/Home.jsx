@@ -4,7 +4,8 @@ import PromptSpace from "../subcomponents/PromptSpace";
 
 const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [storyData, setStoryData] = useState({}); // 1. State to hold the nested story JSON
+  const [storyData, setStoryData] = useState({});
+  const [isGenerating, setIsGenerating] = useState(false); // New loading state
   const episodesRef = useRef(null);
 
   const openNav = () => setIsOpen(true);
@@ -17,19 +18,22 @@ const Home = () => {
   };
 
   // Function passed to PromptSpace to update the story data
-  const handleStoryGenerated = (newStoryData) => {
-    // newStoryData should be the parsed JSON object (the nested story tree)
-    setStoryData(newStoryData);
-    scrollToEpisodes(); // Scroll down immediately after data is set
+  // In Home.jsx, update the handleStoryGenerated function:
+const handleStoryGenerated = (newStoryData) => {
+  console.log("Received story data in Home:", newStoryData); // Add this
+  setStoryData(newStoryData);
+  setIsGenerating(false); // Stop loading when data arrives
+  scrollToEpisodes();
+};
+  // Function to start generation
+  const handleStartGeneration = () => {
+    setIsGenerating(true); // Start loading when button is clicked
   };
 
   // Scroll to top on page load
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-
-  // const storyData = /* The state variable holds the data */;
-
 
   return (
     <>
@@ -94,20 +98,34 @@ const Home = () => {
           isOpen ? "ml-64" : "ml-0"
         }`}
       >
-        {/* Pass the handler function down to PromptSpace */}
+        {/* Pass the handler functions down to PromptSpace */}
         <PromptSpace 
-          onGenerate={scrollToEpisodes} 
+          onGenerate={() => {
+            handleStartGeneration(); // Set loading state
+            scrollToEpisodes(); // Scroll to episodes
+          }} 
           onStoryGenerated={handleStoryGenerated} 
         /> 
         
-        <div ref={episodesRef}>
-          {/* Only render Episodes if storyData is not empty */}
-          {Object.keys(storyData).length > 0 ? (
+        <div ref={episodesRef} className={`transition-opacity duration-300 ${isGenerating ? 'opacity-50' : 'opacity-100'}`}>
+          {/* Show loading spinner while generating */}
+          {isGenerating && (
+            <div className="text-center mt-10">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
+              <p className="text-purple-700 text-xl">Generating your story...</p>
+            </div>
+          )}
+          
+          {/* Show episodes when story data is available */}
+          {!isGenerating && storyData && Object.keys(storyData).length > 0 ? (
             <Episodes storyData={storyData} />
           ) : (
-            <div className="text-center text-gray-500 mt-10 text-xl">
-              Enter your parameters above to generate a new interactive story!
-            </div>
+            /* Only show the placeholder when not generating and no story data */
+            !isGenerating && (
+              <div className="text-center text-gray-500 mt-10 text-xl">
+                Enter your parameters above to generate a new interactive story!
+              </div>
+            )
           )}
         </div>
       </div>

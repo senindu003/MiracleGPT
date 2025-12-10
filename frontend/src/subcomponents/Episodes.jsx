@@ -7,21 +7,49 @@ export default function Episodes({ storyData }) {
   const [fullStoryText, setFullStoryText] = useState("");
   const episodeRefs = useRef({});
 
+  // Debug: log the incoming storyData structure
+  useEffect(() => {
+    console.log("Story data received in Episodes:", storyData);
+    if (storyData && Object.keys(storyData).length > 0) {
+      console.log("First episode structure:", storyData.episode_1);
+      console.log("Choices structure:", storyData.episode_1?.choices);
+    }
+  }, [storyData]);
+
   const getEpisodeByPathIndex = (index) => {
-    let node = storyData;
-    for (let i = 0; i <= index; i++) {
-      const key = path[i];
-      if (!node) return null;
-      if (i === 0) {
-        node = node[key];
-      } else if (i % 2 === 1) {
-        node = node.choices ? node.choices[key] : null;
+  let node = null;
+  for (let i = 0; i <= index; i++) {
+    const key = path[i];
+    if (i % 2 === 0) {
+      // Even index: episode key, get from root storyData
+      node = storyData[key];
+      if (!node) {
+        console.log(`No episode found at index ${i}, key: ${key}`);
+        return null;
+      }
+    } else {
+      // Odd index: choice text, find choice object inside current node
+      if (node && node.choices) {
+        let foundChoice = null;
+        Object.values(node.choices).forEach((choiceObj) => {
+          if (choiceObj.text === key) {
+            foundChoice = choiceObj;
+          }
+        });
+        node = foundChoice;
+        if (!node) {
+          console.log(`No choice found at index ${i}, text: ${key}`);
+          return null;
+        }
       } else {
-        node = node[key];
+        console.log(`No choices found at index ${i} for node`);
+        return null;
       }
     }
-    return node;
-  };
+  }
+  return node;
+};
+
 
   const scrollToEpisode = (episodeId) => {
     const el = episodeRefs.current[episodeId];
@@ -30,24 +58,47 @@ export default function Episodes({ storyData }) {
     }
   };
 
-  const handleChoice = (choiceText, episodeIndex) => {
-    const newPath = path.slice(0, episodeIndex + 1);
-    const currentEpisode = getEpisodeByPathIndex(episodeIndex);
-    const choiceObj = currentEpisode.choices[choiceText];
-    const nextEpisodeKey = Object.keys(choiceObj)[0];
-    const updatedPath = [...newPath, choiceText, nextEpisodeKey];
-    setPath(updatedPath);
+const handleChoice = (choiceText, episodeIndex) => {
+  const newPath = path.slice(0, episodeIndex + 1);
+  const currentEpisode = getEpisodeByPathIndex(episodeIndex);
 
-    setExpandedEpisodes((prev) => new Set(prev).add(nextEpisodeKey));
+  if (!currentEpisode || !currentEpisode.choices) {
+    console.error("No choices found in current episode");
+    return;
+  }
 
-    if (showFullStory) {
-      updateFullStory(updatedPath);
+  console.log("Current episode choices:", currentEpisode.choices);
+
+  let nextEpisodeKey = null; // Declare before usage
+
+  Object.entries(currentEpisode.choices).forEach(([choiceKey, choiceObj]) => {
+    console.log(`Choice key: ${choiceKey}`, choiceObj);
+    if (choiceObj.text === choiceText) {
+      // Use 'leads_to' or 'next_episode' depending on your data
+      nextEpisodeKey = choiceObj.leads_to || choiceObj.next_episode;
+      console.log("Found next episode:", nextEpisodeKey);
     }
+  });
 
-    setTimeout(() => {
-      scrollToEpisode(nextEpisodeKey);
-    }, 100);
-  };
+  if (!nextEpisodeKey) {
+    console.error("Could not find next episode for choice:", choiceText);
+    return;
+  }
+
+  const updatedPath = [...newPath, choiceText, nextEpisodeKey];
+  setPath(updatedPath);
+
+  setExpandedEpisodes((prev) => new Set(prev).add(nextEpisodeKey));
+
+  if (showFullStory) {
+    updateFullStory(updatedPath);
+  }
+
+  setTimeout(() => {
+    scrollToEpisode(nextEpisodeKey);
+  }, 100);
+};
+
 
   const handleBack = () => {
     setPath((prev) => (prev.length > 1 ? prev.slice(0, -2) : prev));
@@ -85,8 +136,12 @@ export default function Episodes({ storyData }) {
     const stories = [];
     for (let i = 0; i < currentPath.length; i += 2) {
       const episode = getEpisodeByPathIndex(i);
-      if (episode && episode.story) {
-        stories.push(episode.story.trim());
+      if (episode) {
+        // Use 'content' field if it exists, otherwise use 'story'
+        const storyText = episode.content || episode.story;
+        if (storyText) {
+          stories.push(storyText.trim());
+        }
       }
     }
     setFullStoryText(stories.join("\n"));
@@ -101,13 +156,20 @@ export default function Episodes({ storyData }) {
     const elements = [];
     for (let i = 0; i < path.length; i += 2) {
       const episode = getEpisodeByPathIndex(i);
-      if (!episode) break;
+      if (!episode) {
+        console.error(`No episode found at index ${i}, path: ${path}`);
+        break;
+      }
 
+      // Check if this is an ending (no choices or empty choices)
       const isEnding = !episode.choices || Object.keys(episode.choices).length === 0;
       const selectedChoice = path[i + 1] || null;
       const episodeId = path[i];
 
       const isExpanded = expandedEpisodes.has(episodeId);
+
+      // Use 'content' if it exists, otherwise use 'story'
+      const storyText = episode.content || episode.story || "No story content";
 
       elements.push(
         <div
@@ -122,7 +184,7 @@ export default function Episodes({ storyData }) {
             aria-expanded={isExpanded}
             disabled={showFullStory}
           >
-            {episode.title}
+            {episode.title || `Episode ${episodeId}`}
           </button>
 
           <div
@@ -131,14 +193,16 @@ export default function Episodes({ storyData }) {
             } text-gray-700 text-lg whitespace-pre-line`}
             aria-hidden={!isExpanded}
           >
-            <div>{episode.story}</div>
+            <div>{storyText}</div>
 
             {isEnding ? (
               <div className="pt-4 text-center text-purple-900 font-semibold">The End.</div>
             ) : (
               <div className="pt-6 space-x-4 flex flex-row justify-between items-center">
-                {Object.entries(episode.choices).map(([choiceText]) => {
+                {episode.choices && Object.values(episode.choices).map((choiceObj, idx) => {
+                  const choiceText = choiceObj.text || `Choice ${idx + 1}`;
                   const isSelected = choiceText === selectedChoice;
+
                   return (
                     <button
                       key={choiceText}
@@ -170,6 +234,16 @@ export default function Episodes({ storyData }) {
   const isLastEpisodeEnding =
     lastEpisode && (!lastEpisode.choices || Object.keys(lastEpisode.choices).length === 0);
   const isLastEpisodeExpanded = expandedEpisodes.has(lastEpisodeId);
+
+  // If no story data, show message
+  if (!storyData || Object.keys(storyData).length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto p-6 bg-purple-50 min-h-screen flex flex-col items-center justify-center">
+        <h1 className="text-4xl font-extrabold mb-6 text-purple-800 text-center">No Story Generated</h1>
+        <p className="text-gray-600 text-lg">Please generate a story first.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6 bg-purple-50 min-h-screen flex flex-col relative">
