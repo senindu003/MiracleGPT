@@ -22,7 +22,7 @@ const options = {
     "Thriller 🔪",
   ],
   mainCharacters: ["1", "2", "3", "4"],
-  episodes: ["2", "3", "4"],
+  episodes: ["2", "3"],
   wordsPerEpisode: ["50-100", "100-150", "150-200", "200-250"],
   choicesPerEpisode: ["2"],
   tone: [

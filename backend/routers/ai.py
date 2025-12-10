@@ -217,6 +217,9 @@ STRUCTURE REQUIREMENTS:
 4. Episode naming: episode_1, episode_2a, episode_2b, episode_3a, etc.
 5. All endings (final episodes) must have empty choices: {{}}
 
+IMPORTANT: You MUST create exactly {episodes} episodes.  
+Do NOT create fewer or more episodes.  
+At the end of your response, include a JSON key "episode_count" with the number of episodes created.
 IMPORTANT: Output ONLY the raw JSON object, no markdown code blocks, no explanations, no additional text.
 The response should start with '{{' and end with '}}'.
 """
@@ -260,7 +263,8 @@ The response should start with '{{' and end with '}}'.
                   {"role": "system", "content": "You are a dynamic branching story generator that creates interactive stories based on user selections."},
                   {"role": "user", "content": final_prompt}
               ],
-              stream=False
+              stream=False,
+              temperature=1.5
           )
           
           # Get the response content
