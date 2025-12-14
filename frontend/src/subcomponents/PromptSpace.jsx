@@ -21,9 +21,8 @@ const options = {
     "Drama 🎭",
     "Thriller 🔪",
   ],
-  mainCharacters: ["1", "2", "3", "4"],
-  episodes: ["2", "3"],
-  wordsPerEpisode: ["50-100", "100-150", "150-200", "200-250"],
+  mainCharacters: ["1", "2", "3", "4", "5"],
+  episodes: ["2", "3", "4"],
   choicesPerEpisode: ["2"],
   tone: [
     "Lucid 😊",
@@ -140,7 +139,6 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
   const [theme, setTheme] = useState(options.theme[4]);
   const [mainCharacters, setMainCharacters] = useState(options.mainCharacters[2]);
   const [episodes, setEpisodes] = useState(options.episodes[0]);
-  const [wordsPerEpisode, setWordsPerEpisode] = useState(options.wordsPerEpisode[1]);
   const [choicesPerEpisode, setChoicesPerEpisode] = useState(
     options.choicesPerEpisode[0]
   );
@@ -159,7 +157,6 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
     theme,
     mainCharacters,
     episodes,
-    wordsPerEpisode,
     choicesPerEpisode,
     tone,
     setting,
@@ -204,13 +201,11 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
           console.error("String that failed to parse:", data.story); // Add this
           alert(`Error parsing story: ${error.message}`);
           // Reset loading state on error
-          setIsGenerating(false);
           if (onStoryGenerated) onStoryGenerated({});
         }
       } else {
         console.error("No story in response:", data); // Add this
         alert("No story data received from server");
-        setIsGenerating(false);
         if (onStoryGenerated) onStoryGenerated({});
       }
     } else {
@@ -229,8 +224,10 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
   } catch(error) {
     console.error("Fetch error:", error); // Add this
     alert(`Error: ${error.message}`);
-    setIsGenerating(false); // Stop loading on error
     if (onStoryGenerated) onStoryGenerated({});
+  }
+  finally{
+    setIsGenerating(false);
   }
 };
 
@@ -266,14 +263,6 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
             selected={episodes}
             setSelected={setEpisodes}
             id="episodes"
-          />
-
-          <Dropdown
-            label="Words per Episode:"
-            options={options.wordsPerEpisode}
-            selected={wordsPerEpisode}
-            setSelected={setWordsPerEpisode}
-            id="wordsPerEpisode"
           />
 
           <Dropdown

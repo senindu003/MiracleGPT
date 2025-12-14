@@ -3,14 +3,21 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
 from routers.ai import ai_router
-
+from routers.user import user_router
+from db.database import engine, Base
+from contextlib import asynccontextmanager
 
 load_dotenv()
 
 origins = os.getenv("ORIGINS").split(",")
 
+@asynccontextmanager
+async def lifespan(app):
+    Base.metadata.create_all(bind=engine)
+    yield
+    print("FastAPI server is shutting down!")
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 main_router = APIRouter()
 # Configure CORS middleware
@@ -22,17 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create a router for API endpoints
-
 
 @main_router.get("/")
 def hello():
     return {"message": "Welcome!"}
 
-
-
 app.include_router(main_router)
 app.include_router(ai_router)
+app.include_router(user_router)
 
 if __name__ == "__main__":
     import uvicorn

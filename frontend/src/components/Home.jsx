@@ -1,8 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Episodes from "../subcomponents/Episodes";
 import PromptSpace from "../subcomponents/PromptSpace";
 
 const Home = () => {
+  const location = useLocation();
+
+  const current_user = location.state ? location.state.current_user : "Guest";
+
   const [isOpen, setIsOpen] = useState(false);
   const [storyData, setStoryData] = useState({});
   const [isGenerating, setIsGenerating] = useState(false); // New loading state
@@ -19,12 +24,12 @@ const Home = () => {
 
   // Function passed to PromptSpace to update the story data
   // In Home.jsx, update the handleStoryGenerated function:
-const handleStoryGenerated = (newStoryData) => {
-  console.log("Received story data in Home:", newStoryData); // Add this
-  setStoryData(newStoryData);
-  setIsGenerating(false); // Stop loading when data arrives
-  scrollToEpisodes();
-};
+  const handleStoryGenerated = (newStoryData) => {
+    console.log("Received story data in Home:", newStoryData); // Add this
+    setStoryData(newStoryData);
+    setIsGenerating(false); // Stop loading when data arrives
+    scrollToEpisodes();
+  };
   // Function to start generation
   const handleStartGeneration = () => {
     setIsGenerating(true); // Start loading when button is clicked
@@ -40,7 +45,7 @@ const handleStoryGenerated = (newStoryData) => {
       {/* Fixed hamburger button always visible */}
       <button
         onClick={openNav}
-        className="fixed top-5 left-5 z-1100 text-white bg-gray-900 px-3 py-1.5 text-lg rounded hover:bg-gray-700 focus:outline-none"
+        className="fixed top-5 left-5 z-200 text-white bg-gray-900 px-3 py-1.5 text-lg rounded hover:bg-gray-700 focus:outline-none"
         aria-label="Open sidebar"
       >
         &#9776;
@@ -65,29 +70,8 @@ const handleStoryGenerated = (newStoryData) => {
             isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          <a
-            href="#"
-            className="text-gray-400 text-[20px] hover:text-gray-100 transition-colors"
-          >
-            About
-          </a>
-          <a
-            href="#"
-            className="text-gray-400 text-2xl hover:text-gray-100 transition-colors"
-          >
-            Services
-          </a>
-          <a
-            href="#"
-            className="text-gray-400 text-2xl hover:text-gray-100 transition-colors"
-          >
-            Clients
-          </a>
-          <a
-            href="#"
-            className="text-gray-400 text-2xl hover:text-gray-100 transition-colors"
-          >
-            Contact
+          <a className="text-gray-400 text-[20px] hover:text-gray-100 transition-colors">
+            Hi {current_user} !
           </a>
         </nav>
       </div>
@@ -99,26 +83,33 @@ const handleStoryGenerated = (newStoryData) => {
         }`}
       >
         {/* Pass the handler functions down to PromptSpace */}
-        <PromptSpace 
+        <PromptSpace
           onGenerate={() => {
             handleStartGeneration(); // Set loading state
             scrollToEpisodes(); // Scroll to episodes
-          }} 
-          onStoryGenerated={handleStoryGenerated} 
-        /> 
-        
-        <div ref={episodesRef} className={`transition-opacity duration-300 ${isGenerating ? 'opacity-50' : 'opacity-100'}`}>
+          }}
+          onStoryGenerated={handleStoryGenerated}
+        />
+
+        <div
+          ref={episodesRef}
+          className={`transition-opacity duration-300 ${
+            isGenerating ? "opacity-50" : "opacity-100"
+          }`}
+        >
           {/* Show loading spinner while generating */}
           {isGenerating && (
             <div className="text-center mt-10">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
-              <p className="text-purple-700 text-xl">Generating your story...</p>
+              <p className="text-purple-700 text-xl">
+                Generating your story...
+              </p>
             </div>
           )}
-          
+
           {/* Show episodes when story data is available */}
           {!isGenerating && storyData && Object.keys(storyData).length > 0 ? (
-            <Episodes storyData={storyData} />
+            <Episodes storyData={storyData} currentUser={current_user} />
           ) : (
             /* Only show the placeholder when not generating and no story data */
             !isGenerating && (

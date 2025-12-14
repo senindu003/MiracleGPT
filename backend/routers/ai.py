@@ -4,238 +4,44 @@ import os
 from openai import OpenAI 
 from dotenv import load_dotenv
 import json
-from db.models import UserRequest, UserResponse
-# Import the new union types
+from routers.models import UserRequest, UserResponse, enhanceRequest, enhanceResponse
+import re
+
+
+def clean_json_string(json_string):
+    # Remove any triple backtick blocks with optional json tag anywhere in the string
+    cleaned_string = re.sub(r'```(?:json)?\s*([\s\S]*?)```', r'\1', json_string, flags=re.IGNORECASE)
+    return cleaned_string.strip()
+
+def extract_json(text):
+    """
+    Attempts to extract the first balanced JSON object from a string.
+    """
+    try:
+        # This regex attempts to find the first {...} block (non-greedy)
+        # It may not work for deeply nested objects but works for typical cases
+        match = re.search(r'\{(?:[^{}]|(?R))*\}', text)
+        if match:
+            return match.group(0)
+    except Exception:
+        pass
+    # Fallback: return original text if no match found
+    return text
 
 
 ai_router = APIRouter()
 
 load_dotenv() 
 
-story_generator_prompt = {
-    "system_role": "You are a dynamic branching story generator that creates interactive stories based on user selections from a web form. All parameters are variable and provided through the user's form selections.",
-    
-    "available_options": {
-        "note": "These are the exact options available in the user's form. Values will come from these arrays.",
-        "theme": [
-            "Fantasy 🧙‍♂️", "Science Fiction 🚀", "Mystery 🕵️‍♀️", "Romance 💕", 
-            "Adventure 🏞️", "Horror 👻", "Historical 🏰", "Comedy 😂", 
-            "Drama 🎭", "Thriller 🔪"
-        ],
-        "mainCharacters": ["1", "2", "3", "4"],
-        "episodes": ["2", "3", "4"],
-        "wordsPerEpisode": ["50-100", "100-150", "150-200", "200-250"],
-        "choicesPerEpisode": ["2"],
-        "tone": [
-            "Lucid 😊", "Dramatic 🎭", "Mysterious 🕵️‍♂️", "Dark / Gothic 🌑", 
-            "Humorous 😂", "Inspirational 🌟", "Emotional 💔", "Suspenseful 😰"
-        ],
-        "setting": [
-            "Medieval Kingdom 🏰", "Futuristic City 🌆", "Haunted House 👻", 
-            "Space Station 🛰️", "Enchanted Forest 🌲", "Post-Apocalyptic Wasteland ☢️", 
-            "Tropical Island 🏝️", "Small Town 🏡"
-        ],
-        "audience": [
-            "Children (ages 5-12)",
-            "Teens (ages 13-18)", 
-            "Adults (18+)",
-            "All Ages"
-        ],
-        "emojis": ["Yes, use liberally 🎉✨", "Use sparingly 🙂", "No emojis ❌"],
-        "specialRequests": [
-            "None", "No violence 🚫🔫", "Focus on friendship 🤝", 
-            "Include mystery elements 🔍", "Avoid horror elements 👻❌", 
-            "Include romance 💕", "Emphasize humor 😂", "Custom (enter in prompt below)"
-        ]
-    },
-    
-    "api_input_format": {
-        "note": "The user's request will come in this exact JSON format from the frontend",
-        "expected_request_structure": {
-            "theme": "string from theme array (e.g., 'Fantasy 🧙‍♂️')",
-            "mainCharacters": "string from mainCharacters array (e.g., '3')",
-            "episodes": "string from episodes array (e.g., '4')",
-            "wordsPerEpisode": "string from wordsPerEpisode array (e.g., '200-250')",
-            "choicesPerEpisode": "string from choicesPerEpisode array (always '2')",
-            "tone": "string from tone array (e.g., 'Suspenseful 😰')",
-            "setting": "string from setting array (e.g., 'Haunted House 👻')",
-            "audience": "string from audience array (e.g., 'Teens (ages 13-18)')",
-            "emojis": "string from emojis array (e.g., 'Yes, use liberally 🎉✨')",
-            "specialRequests": "string from specialRequests array",
-            "additionalInstructions": "string (optional user text input)"
-        },
-        "example_request": {
-            "theme": "Fantasy 🧙‍♂️",
-            "mainCharacters": "3",
-            "episodes": "4",
-            "wordsPerEpisode": "200-250",
-            "choicesPerEpisode": "2",
-            "tone": "Suspenseful 😰",
-            "setting": "Haunted House 👻",
-            "audience": "Teens (ages 13-18)",
-            "emojis": "Yes, use liberally 🎉✨",
-            "specialRequests": "Include mystery elements 🔍",
-            "additionalInstructions": "Make it spooky but not too scary"
-        }
-    },
-    
-    "generation_rules": {
-        "episode_count": {
-            "rule": "Create EXACTLY the number of episodes specified (2, 3, or 4)",
-            "note": "Since episodes only has options 2, 3, 4, keep story compact",
-            "structure": {
-                "2_episodes": "episode_1 → episode_2 (endings in episode_2)",
-                "3_episodes": "episode_1 → episode_2 → episode_3 (endings in episode_3)",
-                "4_episodes": "episode_1 → episode_2 → episode_3 → episode_4 (endings in episode_4)"
-            }
-        },
-        "choices_count": {
-            "rule": "ALWAYS 2 choices per episode (since choicesPerEpisode always = '2')",
-            "note": "Create meaningful binary choices that branch the story"
-        },
-        "characters": {
-            "rule": "Create at least the specified number of main characters",
-            "note": "From options: 1, 2, 3, or 4 characters minimum"
-        },
-        "word_count": {
-            "rule": "Match the wordsPerEpisode range exactly",
-            "ranges": {
-                "50-100": "Very concise, fast-paced",
-                "100-150": "Moderate detail",
-                "150-200": "Good detail and development",
-                "200-250": "Rich, detailed storytelling"
-            }
-        },
-        "emoji_usage": {
-            "rules": {
-                "Yes, use liberally 🎉✨": "Use 2-4 emojis per title, 1-2 per choice text",
-                "Use sparingly 🙂": "Use 0-1 emojis in titles, none in choices",
-                "No emojis ❌": "No emojis anywhere"
-            }
-        },
-        "audience_appropriateness": {
-            "Children (ages 5-12)": "Simple language, positive messages, minimal conflict",
-            "Teens (ages 13-18)": "More complex themes, relationships, moderate conflict",
-            "Adults (18+)": "Mature themes, complex characters, nuanced conflicts",
-            "All Ages": "Universal themes, avoid mature content, positive resolution"
-        },
-        "special_requests": {
-            "processing": "Always incorporate specialRequests into the story",
-            "examples": {
-                "No violence 🚫🔫": "Resolve conflicts through dialogue, puzzles, or escape",
-                "Focus on friendship 🤝": "Emphasize character bonds and cooperation",
-                "Include mystery elements 🔍": "Add clues, secrets, revelations",
-                "Avoid horror elements 👻❌": "Keep tone light even in spooky settings",
-                "Include romance 💕": "Add relationship development",
-                "Emphasize humor 😂": "Add comedic elements and funny situations"
-            }
-        }
-    },
-    
-    "story_structure": {
-        "required_format": "Deeply nested JSON where episodes are inside choice objects",
-        "example_mini_structure": {
-            "episode_1": {
-                "title": "Title with appropriate emojis",
-                "story": "Story text matching word count and tone",
-                "choices": {
-                    "Choice A title with emojis": {
-                        "episode_2a": {
-                            "title": "Next episode title",
-                            "story": "Continuing story",
-                            "choices": "Either more episodes or empty {} for ending"
-                        }
-                    },
-                    "Choice B title with emojis": {
-                        "episode_2b": {
-                            "title": "Alternative episode title",
-                            "story": "Alternative story path",
-                            "choices": "{} for ending or more episodes"
-                        }
-                    }
-                }
-            }
-        },
-        "nesting_depth": "Based on episodes count: 2 episodes = 1 level deep, 3 episodes = 2 levels, 4 episodes = 3 levels"
-    },
-    
-    "content_adaptation_matrix": {
-        "theme_adaptations": {
-            "Fantasy 🧙‍♂️": "Include magic, mythical creatures, quests, medieval elements",
-            "Science Fiction 🚀": "Include technology, space, futuristic elements, aliens",
-            "Mystery 🕵️‍♀️": "Include clues, suspects, investigations, revelations",
-            "Romance 💕": "Focus on relationships, emotions, connections",
-            "Adventure 🏞️": "Include exploration, danger, discovery, action",
-            "Horror 👻": "Include fear, suspense, supernatural, psychological elements",
-            "Historical 🏰": "Include period details, historical accuracy, cultural elements",
-            "Comedy 😂": "Include humor, funny situations, witty dialogue",
-            "Drama 🎭": "Focus on character development, emotional conflicts",
-            "Thriller 🔪": "Include suspense, danger, high stakes, tension"
-        },
-        "tone_adaptations": {
-            "Lucid 😊": "Clear, vivid, emotionally resonant, hopeful",
-            "Dramatic 🎭": "Intense emotions, high stakes, theatrical",
-            "Mysterious 🕵️‍♂️": "Puzzling, enigmatic, slow reveals",
-            "Dark / Gothic 🌑": "Brooding, atmospheric, melancholic",
-            "Humorous 😂": "Funny, lighthearted, witty, playful",
-            "Inspirational 🌟": "Uplifting, motivational, positive",
-            "Emotional 💔": "Heartfelt, sentimental, touching",
-            "Suspenseful 😰": "Tense, anxious, cliffhangers"
-        }
-    },
-    
-    "output_requirements": {
-        "format": "ONLY valid Python Dict object, starting with { and ending with }",
-        "no_wrappers": "Do not wrap in markdown, code blocks, or additional text",
-        "structure": "Must match the deeply nested episodes-inside-choices pattern",
-        "episode_count": f"Must have EXACTLY the number specified in 'episodes' (2, 3, or 4)",
-        "character_count": "Must include at least the specified number of main characters",
-        "word_count": "Each story section must fit within the specified word range",
-        "emoji_compliance": "Follow emoji usage rules based on user selection",
-        "audience_appropriate": "Content must be suitable for the specified audience",
-        "special_requests": "Must incorporate any special requests fully"
-    },
-    
-    "generation_template": """
-Generate a branching interactive story with these specifications:
-- THEME: {theme}
-- MAIN CHARACTERS: {mainCharacters} (create at least this many distinct characters)
-- TOTAL EPISODES: {episodes} (create exactly this many episodes)
-- WORDS PER EPISODE: {wordsPerEpisode} (each story section must fit this range)
-- CHOICES PER EPISODE: {choicesPerEpisode} (always 2 choices per episode)
-- TONE: {tone}
-- SETTING: {setting}
-- AUDIENCE: {audience} (make content appropriate for this age group)
-- EMOJI USAGE: {emojis}
-- SPECIAL REQUESTS: {specialRequests}
-- ADDITIONAL INSTRUCTIONS: {additionalInstructions}
-
-STRUCTURE REQUIREMENTS:
-1. Create exactly {episodes} episodes total
-2. Each episode has exactly 2 choices (except final episodes which have empty {{}})
-3. Use deep nesting: episodes are contained within choice objects
-4. Episode naming: episode_1, episode_2a, episode_2b, episode_3a, etc.
-5. All endings (final episodes) must have empty choices: {{}}
-
-IMPORTANT: You MUST create exactly {episodes} episodes.  
-Do NOT create fewer or more episodes.  
-At the end of your response, include a JSON key "episode_count" with the number of episodes created.
-IMPORTANT: Output ONLY the raw JSON object, no markdown code blocks, no explanations, no additional text.
-The response should start with '{{' and end with '}}'.
-"""
-}
-
-# When receiving request from your frontend
 @ai_router.post("/set_magic")
-async def generate_story(user_request: UserRequest)-> UserResponse:
-    # Construct the prompt using the template
+async def generate_story(user_request: UserRequest) -> UserResponse:
     final_prompt = f"""
 Generate a branching interactive story with these specifications:
+
 - THEME: {user_request.theme}
-- MAIN CHARACTERS: {user_request.mainCharacters} (create at least this many distinct characters)
+- MAIN CHARACTERS: {user_request.mainCharacters} (create at least this many distinct characters with names and brief traits)
 - TOTAL EPISODES: {user_request.episodes} (create exactly this many episodes)
-- WORDS PER EPISODE: {user_request.wordsPerEpisode} (each story section must fit this range)
-- CHOICES PER EPISODE: {user_request.choicesPerEpisode} (always 2 choices per episode)
+- CHOICES PER EPISODE: {user_request.choicesPerEpisode} (always 2 choices per episode except final episodes which have empty choices)
 - TONE: {user_request.tone}
 - SETTING: {user_request.setting}
 - AUDIENCE: {user_request.audience} (make content appropriate for this age group)
@@ -244,42 +50,142 @@ Generate a branching interactive story with these specifications:
 - ADDITIONAL INSTRUCTIONS: {user_request.additionalInstructions}
 
 STRUCTURE REQUIREMENTS:
-1. Create exactly {user_request.episodes} episodes total
-2. Each episode has exactly 2 choices (except final episodes which have empty {{}})
-3. Use deep nesting: episodes are contained within choice objects
-4. Episode naming: episode_1, episode_2a, episode_2b, episode_3a, etc.
-5. All endings (final episodes) must have empty choices: {{}}
 
-IMPORTANT: Output ONLY the raw JSON object, no markdown code blocks, no explanations, no additional text.
-The response should start with '{{' and end with '}}'.
+1. The story must be a JSON object with flat structure where each episode is a top-level key like "episode_1", "episode_2a", "episode_2b", "episode_3a", etc.
+2. Each episode is an object containing:
+   - "title": a short string title of the episode,
+   - "story": a short descriptive text (no more than 100 words) for the episode,
+   - "choices": an object whose keys are arbitrary choice IDs (e.g., "choice_1", "choice_2"),
+     and whose values are objects with:
+       - "text": the choice text shown to the user,
+       - "leads_to": the episode ID string this choice leads to (e.g., "episode_2a").
+3. Each non-final episode must have exactly 2 choices.
+4. Final episodes (endings) must have empty choices: {{}}.
+5. Episode naming should follow a binary or branching tree pattern, e.g.:
+   episode_1, episode_2a, episode_2b, episode_3a, episode_3b, episode_3c, episode_3d, episode_4a, episode_4b, ..., etc.
+6. Use double quotes for all JSON keys and string values.
+7. Output ONLY the raw JSON object with no markdown, no explanations, no extra text.
+8. The JSON response must start with '{{' and end with '}}' (single braces).
+
+IMPORTANT: Strictly adhere to the user specifications above for number of episodes, choices per episode, naming conventions, and structure.
+Do NOT nest full episode objects inside choices. Choices must only contain "text" and "leads_to" fields referencing top-level episodes.
+
+EXAMPLE EPISODE STRUCTURE (for structure reference only):
+
+{{
+  "episode_1": {{
+    "title": "The Whispering Lagoon 🏝️🔍",
+    "story": "You, Maya (the curious photographer 📸), Leo (the inventor 🧪), and Zara (the historian 📜) arrive at the lagoon...",
+    "choices": {{
+      "choice_1": {{
+        "text": "Investigate the stone spiral with Zara 🧐💎",
+        "leads_to": "episode_2a"
+      }},
+      "choice_2": {{
+        "text": "Follow the shoreline with Leo to find the source of the hum 🎵🌊",
+        "leads_to": "episode_2b"
+      }}
+    }}
+  }},
+  "episode_2a": {{
+    "title": "Glyphs in the Sand 📜🏖️",
+    "story": "You and Zara kneel by the stones...",
+    "choices": {{
+      "choice_1": {{
+        "text": "Explore the ancient carvings 🔍",
+        "leads_to": "episode_3a"
+      }},
+      "choice_2": {{
+        "text": "Return to camp to discuss findings 🏕️",
+        "leads_to": "episode_3b"
+      }}
+    }}
+  }},
+  "episode_2b": {{
+    "title": "Songs of the Shoreline 🌊🎶",
+    "story": "Following Leo, you discover...",
+    "choices": {{}}
+  }},
+  "episode_3a": {{
+    "title": "Secrets Unveiled 🔐",
+    "story": "The carvings reveal a hidden message...",
+    "choices": {{}}
+  }},
+  "episode_3b": {{
+    "title": "Campfire Tales 🔥",
+    "story": "Back at camp, stories emerge...",
+    "choices": {{}}
+  }}
+}}
+
 """
-    
+
     client = OpenAI(api_key=os.getenv('DEEPSEEK_API_KEY'), base_url="https://api.deepseek.com")
     
     try:
-          response = client.chat.completions.create(
-              model="deepseek-chat",
-              messages=[
-                  {"role": "system", "content": "You are a dynamic branching story generator that creates interactive stories based on user selections."},
-                  {"role": "user", "content": final_prompt}
-              ],
-              stream=False,
-              temperature=1.5
-          )
-          
-          # Get the response content
-          content = response.choices[0].message.content
-          
-          # Try to parse the JSON string
-          try:
-              story_json = json.loads(content)
-              return UserResponse(story=story_json, error=None)
-          except json.JSONDecodeError as e:
-              # If parsing fails, return error
-              return UserResponse(
-                  story={}, 
-                  error=f"Failed to parse JSON response: {str(e)}"
-              )
-              
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "You are a dynamic branching story generator that creates interactive stories based on user selections."},
+                {"role": "user", "content": final_prompt}
+            ],
+            stream=False,
+            temperature=1.3
+        )
+        
+        content = response.choices[0].message.content
+        print("Raw AI response:", content)  # Debug print
+        
+        content = clean_json_string(content)
+        content = extract_json(content)
+        
+        story_json = json.loads(content)
+        return UserResponse(story=story_json, error=None)
+    except json.JSONDecodeError as e:
+        return UserResponse(
+            story={}, 
+            error=f"Failed to parse JSON response: {str(e)}"
+        )
     except Exception as e:
         return UserResponse(story={}, error=f"API call failed: {str(e)}")
+
+
+@ai_router.post("/enhance")
+async def enhance_story(passedStory: enhanceRequest) -> enhanceResponse:
+    prompt = '''You are an amazing short story enhancer including more live dialogues and increasing the word count of the story.
+The desired output short story should have a title with word count of 2000-3000 words. Based on the theme of the short story, include more live dialogues and subplots to increase the word count of the short story with more humanized manner. Don't include Emojis.
+
+Output ONLY the raw JSON object with no explanations, no markdown, or extra text.
+
+OUTPUT STRUCTURE:
+{
+"title": "Story Title",
+"story": "Enhanced Story Content"
+}
+'''
+
+    client = OpenAI(api_key=os.getenv('DEEPSEEK_API_KEY'), base_url="https://api.deepseek.com")
+    
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": passedStory.story}
+            ],
+            stream=False,
+            temperature=1.3
+        )
+        
+        content = response.choices[0].message.content
+        print("Raw AI response:", content)  # Debug print
+        
+        content = clean_json_string(content)
+        content = extract_json(content)
+        
+        story_json = json.loads(content)
+        return enhanceResponse(title=story_json["title"], enhancedStory=story_json["story"], error=None)
+    except json.JSONDecodeError as e:
+        return enhanceResponse(title="ERROR!!", enhancedStory=passedStory.story, error=f"Failed to parse JSON: {str(e)}")
+    except Exception as e:
+        return enhanceResponse(title="ERROR!!", enhancedStory=passedStory.story, error=f"API call failed: {str(e)}")

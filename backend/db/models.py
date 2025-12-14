@@ -1,43 +1,24 @@
-# db/models.py
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
-import json
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.mysql import LONGTEXT
+from db.database import Base
 
-class UserRequest(BaseModel):
-    theme: str
-    mainCharacters: str
-    episodes: str  # "2", "3", or "4"
-    wordsPerEpisode: str
-    choicesPerEpisode: str
-    tone: str
-    setting: str
-    audience: str
-    emojis: str
-    specialRequests: str
-    additionalInstructions: Optional[str] = None
+class User(Base):
+    __tablename__ = "users"
+    firstname = Column(String(55), nullable=False)
+    lastname = Column(String(55), nullable=False)
+    username = Column(String(55), primary_key=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password = Column(LONGTEXT, nullable=False)
 
-class UserResponse(BaseModel):
-    story: Dict[str, Any]
-    error: Optional[str] = None
+    stories = relationship("Story", back_populates="user")
+
+class Story(Base):
+    __tablename__ = "stories"
+    story_id = Column(Integer, primary_key=True, index=True, autoincrement=True, nullable=False)
+    author = Column(String(55), ForeignKey("users.username"), nullable=False)
+    title = Column(String(255), index=True, nullable=False)
+    story = Column(LONGTEXT, nullable=False)
+    created_at = Column(DateTime, nullable=False)
     
-    @staticmethod
-    def _count_episodes(story_data: Dict[str, Any], depth: int = 1, max_depth: int = 1) -> int:
-        """Count the maximum depth/nesting of episodes"""
-        if not story_data:
-            return 0
-        
-        # Look for episode keys
-        episode_keys = [k for k in story_data.keys() if k.startswith('episode_')]
-        current_depth = depth
-        
-        for key in episode_keys:
-            episode = story_data[key]
-            # Check if this episode has choices with more episodes
-            if episode.get('choices'):
-                for choice_value in episode['choices'].values():
-                    # Recursively check nested episodes
-                    nested_depth = UserResponse._count_episodes(choice_value, depth + 1, max_depth)
-                    if nested_depth > max_depth:
-                        max_depth = nested_depth
-        
-        return max(max_depth, current_depth)
+    user = relationship("User", back_populates="stories")
