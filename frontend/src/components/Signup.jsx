@@ -44,7 +44,7 @@ const Signup = () => {
       alert(data.message);
       navigate("/home", {
         replace: true,
-        state: { current_user: data.current_user },
+        state: data.user_details,
       });
     } catch (error) {
       console.error(error.message);
@@ -59,7 +59,7 @@ const Signup = () => {
           Welcome to MiracleGPT
         </h1>
         <h3 className="font-normal text-center">
-          Are you ready to create your own Magic?
+          Are you ready to create your first Interactive Story?
         </h3>
         <form onSubmit={handleSubmitSignup} className="mt-6">
           <div className="flex justify-between gap-3">

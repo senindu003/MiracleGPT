@@ -1,18 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Episodes({ storyData, currentUser }) {
+  const navigate = useNavigate();
+
   const [path, setPath] = useState(["episode_1"]);
   const [expandedEpisodes, setExpandedEpisodes] = useState(
     new Set(["episode_1"])
   );
   const [showFullStory, setShowFullStory] = useState(false);
   const [fullStoryText, setFullStoryText] = useState("");
-  const [storyTitle, setStoryTitle] = useState(
-    "No Title?🫣 Build up the story!✨"
-  );
+  const [storyTitle, setStoryTitle] = useState("Untitled Wireframe");
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [count, setCount] = useState(0);
+  const [changeTitle, setChangeTitle] = useState(false);
   const episodeRefs = useRef({});
 
   // Debug: log the incoming storyData structure
@@ -156,12 +158,17 @@ export default function Episodes({ storyData, currentUser }) {
   const handleGetStory = () => {
     updateFullStory();
     setShowFullStory(true);
-    setStoryTitle("No Title?🫣 Build up the story!✨");
+    setStoryTitle("Untitled Wireframe");
   };
 
   const handleEnhanceStory = async () => {
+    const agreed = confirm(
+      "Are you sure you want to build up the story according to chosen wireframe?"
+    );
+    if (!agreed) return;
     setIsEnhancing(true);
-    setStoryTitle("Waiting for enhancement...");
+    const preferredTitle = storyTitle;
+    setStoryTitle("Building your story...");
     try {
       const response = await fetch("http://127.0.0.1:8000/enhance", {
         method: "POST",
@@ -175,7 +182,9 @@ export default function Episodes({ storyData, currentUser }) {
       }
       const data = await response.json();
       setFullStoryText(data.enhancedStory);
-      setStoryTitle(data.title);
+      preferredTitle == "Untitled Wireframe"
+        ? setStoryTitle(data.title)
+        : setStoryTitle(preferredTitle);
       if (data.error) {
         throw new Error(data.error);
       }
@@ -189,6 +198,8 @@ export default function Episodes({ storyData, currentUser }) {
   };
 
   const handleSaveStory = async () => {
+    const shouldSave = confirm("Are you sure you want to save this story?");
+    if (!shouldSave) return;
     setIsSaving(true);
     try {
       const response = await fetch("http://127.0.0.1:8000/save", {
@@ -207,8 +218,10 @@ export default function Episodes({ storyData, currentUser }) {
       }
       const data = await response.json();
       alert(data.message);
-
-      console.log(`Your story has been saved with ID: ${data.story_id}`);
+      navigate("/home", {
+        replace: true,
+        state: data.user_details,
+      });
     } catch (error) {
       console.error(error);
       alert(error);
@@ -366,22 +379,52 @@ export default function Episodes({ storyData, currentUser }) {
                 setCount(0);
                 setIsSaving(false);
               }}
-              className="absolute top-2 right-2 rounded-md bg-red-500 text-white py-2 px-4 hover:bg-red-600 transition disabled:opacity-20 disabled:cursor-not-allowed"
+              className="absolute top-2 right-2 rounded-md  text-white py-2 px-4 hover:cursor-pointer transition disabled:opacity-20 disabled:cursor-not-allowed"
               disabled={isEnhancing}
             >
               ✖️
             </button>
-            <label
-              htmlFor="fullStoryTextarea"
-              className="font-semibold text-purple-800 mb-2"
-            >
-              {storyTitle}
-            </label>
+            <div>
+              <label
+                onClick={() => setChangeTitle(true)}
+                htmlFor="fullStoryTextarea"
+                className="font-semibold text-purple-800 mb-2 inline-block"
+              >
+                {!changeTitle && storyTitle}
+                {changeTitle && (
+                  <div>
+                    <input
+                      type="text"
+                      value={storyTitle}
+                      onChange={(e) => setStoryTitle(e.target.value)}
+                      className="w-full p-2 border border-purple-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 "
+                    />
+                  </div>
+                )}
+              </label>
+              {changeTitle ? (
+                <button
+                  className="rounded-md bg-green-600 text-[12px] text-white py-1 px-3 ml-2 hover:bg-green-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
+                  disabled={isEnhancing}
+                  onClick={() => setChangeTitle(false)}
+                >
+                  OK
+                </button>
+              ) : (
+                <button
+                  className="rounded-md bg-blue-600 text-[12px] text-white py-1 px-3 ml-2 hover:bg-blue-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
+                  disabled={isEnhancing}
+                  onClick={() => setChangeTitle(true)}
+                >
+                  Edit Title
+                </button>
+              )}
+            </div>
             <textarea
               id="fullStoryTextarea"
               value={fullStoryText}
               onChange={(e) => setFullStoryText(e.target.value)}
-              className=" resize-none grow p-2 border border-purple-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 "
+              className="resize-none grow p-2 border border-purple-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 "
               style={{ minHeight: "300px" }}
               disabled={isEnhancing}
             />
@@ -392,10 +435,16 @@ export default function Episodes({ storyData, currentUser }) {
                     ? alert("New feature is coming soon ...")
                     : handleEnhanceStory();
                 }}
-                className="rounded-md bg-blue-600 text-white py-2 px-4 hover:bg-blue-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
+                className="relative rounded-md bg-blue-600 text-white py-2 px-4 hover:bg-blue-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
                 disabled={isEnhancing}
               >
-                {count >= 1 ? "Enhance more 🧙🏻‍♂️" : "Build Up 🚀"}
+                {count >= 1 ? "Enhance more 🧙🏻‍♂️" : "Let's Build Up Story 🚀"}
+                {!count >= 1 && (
+                  <span
+                    className="absolute top-1 right-1 size-3 animate-ping rounded-full bg-red-700"
+                    disabled={isEnhancing}
+                  ></span>
+                )}
               </button>
               {count >= 1 && (
                 <button
@@ -403,7 +452,19 @@ export default function Episodes({ storyData, currentUser }) {
                   className="rounded-md bg-green-600 text-white py-2 px-4 hover:bg-green-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
                   disabled={isSaving}
                 >
-                  Save 📥
+                  Save to Library 📥
+                </button>
+              )}
+              {count >= 1 && (
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem("pdfTitle", storyTitle);
+                    sessionStorage.setItem("pdfContent", fullStoryText);
+                    window.open("/pdf_preview", "_blank", "titlebar=0");
+                  }}
+                  className="rounded-md bg-pink-600 text-white py-2 px-4 hover:bg-pink-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
+                >
+                  Download Story ⬇️
                 </button>
               )}
             </div>

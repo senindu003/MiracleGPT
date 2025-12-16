@@ -78,15 +78,3 @@ class addStory(BaseModel):
         orm_mode = True
 
 
-class getStory(BaseModel):
-    story_id: int
-
-    class config:
-        orm_mode = True
-
-
-class getUserStories(BaseModel):
-    author: str
-
-    class config:
-        orm_mode = True

@@ -1,17 +1,33 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Episodes from "../subcomponents/Episodes";
 import PromptSpace from "../subcomponents/PromptSpace";
 
 const Home = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const current_user = location.state ? location.state.current_user : "Guest";
+  const current_user = location.state || {
+    username: "Guest",
+    stories: { id: [], title: [] },
+  };
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isStoriesOpen, setIsStoriesOpen] = useState(false);
+  const [isMyStoriesOpen, setIsMyStoriesOpen] = useState(false);
   const [storyData, setStoryData] = useState({});
   const [isGenerating, setIsGenerating] = useState(false); // New loading state
   const episodesRef = useRef(null);
+
+  // NEW: Manage stories in state to update UI after deletion
+  const [userStories, setUserStories] = useState(() => {
+    const ids = current_user.stories?.id || [];
+    const titles = current_user.stories?.title || [];
+    return ids.map((id, idx) => ({
+      id,
+      title: titles[idx] || "Untitled",
+    }));
+  });
 
   const openNav = () => setIsOpen(true);
   const closeNav = () => setIsOpen(false);
@@ -23,16 +39,76 @@ const Home = () => {
   };
 
   // Function passed to PromptSpace to update the story data
-  // In Home.jsx, update the handleStoryGenerated function:
   const handleStoryGenerated = (newStoryData) => {
-    console.log("Received story data in Home:", newStoryData); // Add this
+    console.log("Received story data in Home:", newStoryData);
     setStoryData(newStoryData);
-    setIsGenerating(false); // Stop loading when data arrives
+    setIsGenerating(false);
     scrollToEpisodes();
   };
   // Function to start generation
   const handleStartGeneration = () => {
-    setIsGenerating(true); // Start loading when button is clicked
+    setIsGenerating(true);
+  };
+
+  const handleGetStory = async (story_id) => {
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/get_story/${story_id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        const errdata = await response.json();
+        throw new Error(errdata.detail);
+      }
+      const data = await response.json();
+      console.log(data);
+      sessionStorage.setItem("pdfTitle", data.title);
+      sessionStorage.setItem("pdfContent", data.story);
+      window.open("/pdf_preview", "_blank", "titlebar=0");
+    } catch (error) {
+      console.error(error.message);
+      alert(error.message);
+    }
+  };
+
+  // UPDATED: handleDeleteStory updates userStories state after deletion
+  const handleDeleteStory = async (story_id) => {
+    const story = userStories.find((s) => s.id === story_id);
+    const agreed = window.confirm(
+      `Are you sure to delete "${story?.title}" story?`
+    );
+    if (!agreed) return;
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/delete_story/${story_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        const errdata = await response.json();
+        throw new Error(errdata.detail);
+      }
+      const data = await response.json();
+
+      // Remove deleted story from state so UI updates immediately
+      setUserStories((prevStories) =>
+        prevStories.filter((s) => s.id !== story_id)
+      );
+
+      alert(data.message);
+    } catch (error) {
+      console.error(error.message);
+      alert(error.message);
+    }
   };
 
   // Scroll to top on page load
@@ -66,13 +142,140 @@ const Home = () => {
           &times;
         </button>
         <nav
-          className={`flex flex-col space-y-4 pl-8 transition-opacity duration-300 ${
+          className={`flex flex-col space-y-6 pl-8 transition-opacity duration-300 ${
             isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          <a className="text-gray-400 text-[20px] hover:text-gray-100 transition-colors">
-            Hi {current_user} !
+          {/* User Profile Section */}
+          <div className="flex items-center space-x-4">
+            <img
+              src={current_user.profilePicUrl || "/no_photo.png"}
+              alt={`${current_user.username || current_user}'s profile`}
+              className="w-12 h-12 rounded-full object-cover border-2 border-purple-600"
+            />
+            <div>
+              <p className="text-white font-semibold text-lg">
+                {current_user.username || current_user || "Guest"}
+              </p>
+              <p className="text-gray-400 text-sm">Welcome back!</p>
+            </div>
+          </div>
+
+          <a className="text-gray-400 text-lg hover:text-white transition-colors cursor-pointer">
+            Profile
           </a>
+
+          {/* Accordion: Stories */}
+          <div>
+            <button
+              onClick={() => setIsStoriesOpen(!isStoriesOpen)}
+              className="flex items-center justify-between w-full text-gray-400 text-lg hover:text-white transition-colors focus:outline-none"
+              aria-expanded={isStoriesOpen}
+              aria-controls="stories-accordion"
+            >
+              <span className="cursor-pointer">Library</span>
+            </button>
+
+            {/* Accordion content */}
+            {isStoriesOpen && (
+              <div
+                id="stories-accordion"
+                className="mt-2 ml-4 flex flex-col space-y-2"
+              >
+                <a
+                  onClick={() => {
+                    closeNav();
+                    window.scrollTo(0, 0);
+                  }}
+                  className="text-gray-400 text-base hover:text-white transition-colors cursor-pointer"
+                >
+                  Create New
+                </a>
+
+                {/* Nested Accordion for My Stories */}
+                <div>
+                  <button
+                    onClick={() => setIsMyStoriesOpen(!isMyStoriesOpen)}
+                    className="flex items-center justify-between w-full text-gray-400 text-base hover:text-white transition-colors focus:outline-none cursor-pointer"
+                    aria-expanded={isMyStoriesOpen}
+                    aria-controls="my-stories-accordion"
+                  >
+                    <span>View Story</span>
+                    <svg
+                      className={`w-4 h-4 transform transition-transform duration-300 ${
+                        isMyStoriesOpen ? "rotate-90" : ""
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+
+                  {isMyStoriesOpen && (
+                    <div
+                      id="my-stories-accordion"
+                      className="mt-2 ml-4 flex flex-col space-y-1"
+                    >
+                      {userStories.length > 0 ? (
+                        userStories.map((story) => (
+                          <div className="mb-3" key={story.id}>
+                            <a
+                              onClick={() => handleGetStory(story.id)}
+                              className="text-gray-400 text-sm hover:text-white transition-colors cursor-pointer leading-0.5"
+                            >
+                              <span className="text-[25px] mr-2">&#8226;</span>
+                              {story.title}
+                            </a>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              fill="Red"
+                              viewBox="0 0 16 16"
+                              className="bi bi-trash cursor-pointer rounded-full inline-block ml-5"
+                              onClick={() => handleDeleteStory(story.id)} // FIXED: wrapped in arrow function
+                            >
+                              <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+                              <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
+                            </svg>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 text-sm">
+                          No stories found.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <a className="text-gray-400 text-base hover:text-white transition-colors cursor-pointer">
+                  Favorites
+                </a>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => {
+              navigate("/login", {
+                replace: true,
+                state: { current_user: "Guest" },
+              });
+              closeNav();
+            }}
+            className="text-gray-400 text-lg hover:text-white transition-colors text-left cursor-pointer"
+          >
+            Log Out
+          </button>
         </nav>
       </div>
 
@@ -85,8 +288,8 @@ const Home = () => {
         {/* Pass the handler functions down to PromptSpace */}
         <PromptSpace
           onGenerate={() => {
-            handleStartGeneration(); // Set loading state
-            scrollToEpisodes(); // Scroll to episodes
+            handleStartGeneration();
+            scrollToEpisodes();
           }}
           onStoryGenerated={handleStoryGenerated}
         />
@@ -97,7 +300,6 @@ const Home = () => {
             isGenerating ? "opacity-50" : "opacity-100"
           }`}
         >
-          {/* Show loading spinner while generating */}
           {isGenerating && (
             <div className="text-center mt-10">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600 mb-4"></div>
@@ -107,11 +309,12 @@ const Home = () => {
             </div>
           )}
 
-          {/* Show episodes when story data is available */}
           {!isGenerating && storyData && Object.keys(storyData).length > 0 ? (
-            <Episodes storyData={storyData} currentUser={current_user} />
+            <Episodes
+              storyData={storyData}
+              currentUser={current_user.username}
+            />
           ) : (
-            /* Only show the placeholder when not generating and no story data */
             !isGenerating && (
               <div className="text-center text-gray-500 mt-10 text-xl">
                 Enter your parameters above to generate a new interactive story!

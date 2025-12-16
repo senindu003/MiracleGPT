@@ -1,12 +1,17 @@
 import React from "react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Login = () => {
   const navigate = useNavigate();
-
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const current_user = location.state || {
+    username: "Guest",
+    stories: { id: [], title: [] },
+  };
 
   const handleSubmitLogin = async (e) => {
     e.preventDefault();
@@ -30,8 +35,8 @@ const Login = () => {
       const data = await response.json();
       alert(data.message);
       navigate("/home", {
-        replace: true,
-        state: { current_user: data.current_user },
+        replace: false,
+        state: data.user_details,
       });
     } catch (error) {
       console.error(error.message);

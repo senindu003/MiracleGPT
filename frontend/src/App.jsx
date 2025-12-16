@@ -8,6 +8,7 @@ import {
   Route,
   BrowserRouter,
 } from "react-router-dom";
+import PdfPreviewPage from "./subcomponents/PdfPreviewPage";
 
 const App = () => {
   return (
@@ -17,6 +18,7 @@ const App = () => {
           <Route path="/" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/home" element={<Home />} />
+          <Route path="/pdf_preview" element={<PdfPreviewPage />} />
         </Routes>
       </BrowserRouter>
     </div>

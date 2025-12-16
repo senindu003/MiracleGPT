@@ -137,7 +137,9 @@ function Dropdown({ label, options, selected, setSelected, id }) {
 const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
   // State hooks for all dropdowns
   const [theme, setTheme] = useState(options.theme[4]);
-  const [mainCharacters, setMainCharacters] = useState(options.mainCharacters[2]);
+  const [mainCharacters, setMainCharacters] = useState(
+    options.mainCharacters[2]
+  );
   const [episodes, setEpisodes] = useState(options.episodes[0]);
   const [choicesPerEpisode, setChoicesPerEpisode] = useState(
     options.choicesPerEpisode[0]
@@ -149,87 +151,86 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
   const [specialRequests, setSpecialRequests] = useState(
     options.specialRequests[0]
   );
-  const [additionalInstructions, setAdditionalInstructions] = useState("None");
+  const [additionalInstructions, setAdditionalInstructions] = useState("");
   const [isGenerating, setIsGenerating] = useState(false); // Add loading state
 
   const handleGenerate = async () => {
-  const request = {
-    theme,
-    mainCharacters,
-    episodes,
-    choicesPerEpisode,
-    tone,
-    setting,
-    audience,
-    emojis,
-    specialRequests,
-    additionalInstructions
-  };
-  
-  console.log("Sending request:", request); // Add this
-  
-  try {
-    setIsGenerating(true); // Start loading
-    if (onGenerate) onGenerate(); // Notify parent about generation start
-    
-    const response = await fetch("http://127.0.0.1:8000/set_magic", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    });
-    
-    console.log("Response status:", response.status); // Add this
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log("API response data:", data); // Add this to see full response
-      
-      if (data.story && typeof data.story === 'object') {
-        console.log("Story is object:", data.story); // Add this
-        // Pass the story data to parent
-        if (onStoryGenerated) onStoryGenerated(data.story);
-      } else if (data.story && typeof data.story === 'string') {
-        console.log("Story is string:", data.story.substring(0, 100) + "..."); // Add this
-        try {
-          const parsedStory = JSON.parse(data.story);
-          console.log("Parsed story:", parsedStory); // This should now show
-          if (onStoryGenerated) onStoryGenerated(parsedStory);
-        } catch (error) {
-          console.error("JSON parse error:", error); // Add this
-          console.error("String that failed to parse:", data.story); // Add this
-          alert(`Error parsing story: ${error.message}`);
-          // Reset loading state on error
+    const request = {
+      theme,
+      mainCharacters,
+      episodes,
+      choicesPerEpisode,
+      tone,
+      setting,
+      audience,
+      emojis,
+      specialRequests,
+      additionalInstructions,
+    };
+
+    console.log("Sending request:", request); // Add this
+
+    try {
+      setIsGenerating(true); // Start loading
+      if (onGenerate) onGenerate(); // Notify parent about generation start
+
+      const response = await fetch("http://127.0.0.1:8000/set_magic", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      });
+
+      console.log("Response status:", response.status); // Add this
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("API response data:", data); // Add this to see full response
+
+        if (data.story && typeof data.story === "object") {
+          console.log("Story is object:", data.story); // Add this
+          // Pass the story data to parent
+          if (onStoryGenerated) onStoryGenerated(data.story);
+        } else if (data.story && typeof data.story === "string") {
+          console.log("Story is string:", data.story.substring(0, 100) + "..."); // Add this
+          try {
+            const parsedStory = JSON.parse(data.story);
+            console.log("Parsed story:", parsedStory); // This should now show
+            if (onStoryGenerated) onStoryGenerated(parsedStory);
+          } catch (error) {
+            console.error("JSON parse error:", error); // Add this
+            console.error("String that failed to parse:", data.story); // Add this
+            alert(`Error parsing story: ${error.message}`);
+            // Reset loading state on error
+            if (onStoryGenerated) onStoryGenerated({});
+          }
+        } else {
+          console.error("No story in response:", data); // Add this
+          alert("No story data received from server");
           if (onStoryGenerated) onStoryGenerated({});
         }
       } else {
-        console.error("No story in response:", data); // Add this
-        alert("No story data received from server");
-        if (onStoryGenerated) onStoryGenerated({});
+        console.error("Response not OK:", response.status); // Add this
+        const errorText = await response.text();
+        console.error("Error response text:", errorText); // Add this
+        let errorMessage = response.statusText;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // Not JSON
+        }
+        throw new Error(errorMessage);
       }
-    } else {
-      console.error("Response not OK:", response.status); // Add this
-      const errorText = await response.text();
-      console.error("Error response text:", errorText); // Add this
-      let errorMessage = response.statusText;
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.error || errorMessage;
-      } catch (e) {
-        // Not JSON
-      }
-      throw new Error(errorMessage);
+    } catch (error) {
+      console.error("Fetch error:", error); // Add this
+      alert(`Error: ${error.message}`);
+      if (onStoryGenerated) onStoryGenerated({});
+    } finally {
+      setIsGenerating(false);
     }
-  } catch(error) {
-    console.error("Fetch error:", error); // Add this
-    alert(`Error: ${error.message}`);
-    if (onStoryGenerated) onStoryGenerated({});
-  }
-  finally{
-    setIsGenerating(false);
-  }
-};
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -239,9 +240,12 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
   return (
     <div className="flex flex-row justify-center items-start p-6 bg-purple-50 min-h-screen">
       <div className="border-purple-500 border-4 p-6 rounded-lg max-w-3xl w-full bg-white shadow-lg">
-        <h1 className="text-center text-3xl font-semibold text-purple-800 mb-8">
-          Interactive Story Generator
+        <h1 className="text-center text-3xl font-semibold text-purple-800 mb-1">
+          MiracleGPT
         </h1>
+        <h2 className="text-center text-xl font-semibold text-purple-500 mb-8">
+          Interactive Story Generator
+        </h2>
         <form className="space-y-6" onSubmit={handleSubmit}>
           <Dropdown
             label="Theme / Genre:"
@@ -319,7 +323,9 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
               name="prompt-area"
               rows={5}
               value={additionalInstructions}
-              onChange={(e)=>{setAdditionalInstructions(e.target.value)}}
+              onChange={(e) => {
+                setAdditionalInstructions(e.target.value);
+              }}
               placeholder="Enter your story prompt or any extra instructions here..."
               className="w-full rounded-md border-2 border-gray-300 p-3 resize-y focus:outline-none focus:ring-2 focus:ring-purple-500"
             />

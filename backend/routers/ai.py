@@ -153,7 +153,7 @@ EXAMPLE EPISODE STRUCTURE (for structure reference only):
 @ai_router.post("/enhance")
 async def enhance_story(passedStory: enhanceRequest) -> enhanceResponse:
     prompt = '''You are an amazing short story enhancer including more live dialogues and increasing the word count of the story.
-The desired output short story should have a title with word count of 2000-3000 words. Based on the theme of the short story, include more live dialogues and subplots to increase the word count of the short story with more humanized manner. Don't include Emojis.
+The desired output short story should have a creative short title with word count of 2000-3000 words. Based on the theme of the short story, include more live dialogues and subplots to increase the word count of the short story with more humanized LUCID and SIMPLE tone. Don't include Emojis.
 
 Output ONLY the raw JSON object with no explanations, no markdown, or extra text.
 
