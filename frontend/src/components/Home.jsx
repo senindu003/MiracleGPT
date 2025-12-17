@@ -84,7 +84,7 @@ const Home = () => {
       console.log(data);
       localStorage.setItem("pdfTitle", data.title);
       localStorage.setItem("pdfContent", data.story);
-      window.open("/pdf-preview", "_blank", "titlebar=0");
+      window.open("/pdf_preview", "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error(error.message);
       alert(error.message);

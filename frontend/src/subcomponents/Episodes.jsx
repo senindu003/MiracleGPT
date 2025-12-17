@@ -446,7 +446,11 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
                   onClick={() => {
                     localStorage.setItem("pdfTitle", storyTitle);
                     localStorage.setItem("pdfContent", fullStoryText);
-                    window.open("/pdf_preview", "_blank", "titlebar=0");
+                    window.open(
+                      "/pdf_preview",
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
                   }}
                   className="rounded-md bg-pink-600 text-white py-2 px-4 hover:bg-pink-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
                 >
