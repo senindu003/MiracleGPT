@@ -5,13 +5,13 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import json
 from fastapi import APIRouter, Depends
-from db.models import User, Usage
-from routers.models import UserRequest, UserResponse, enhanceRequest, enhanceResponse
-from routers.auth import get_current_user
+from backend.db.models import User, Usage
+from backend.routers.models import UserRequest, UserResponse, enhanceRequest, enhanceResponse
+from backend.routers.auth import get_current_user
 import re
 from datetime import date
 from sqlalchemy.orm import Session
-from db.database import get_db
+from backend.db.database import get_db
 
 
 

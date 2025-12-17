@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
-from db.database import get_db
+from backend.db.database import get_db
 from sqlalchemy.orm import Session
-from routers.models import addUser, checkUser, addStory
-from db.models import User, Story
+from backend.routers.models import addUser, checkUser, addStory
+from backend.db.models import User, Story
 from passlib.hash import bcrypt
 from sqlalchemy import or_, func
-from routers.auth import create_access_token, get_current_user
+from backend.routers.auth import create_access_token, get_current_user
 
 
 

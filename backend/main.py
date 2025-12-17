@@ -2,9 +2,9 @@ from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
-from routers.ai import ai_router
-from routers.user import user_router
-from db.database import engine, Base
+from backend.routers.ai import ai_router
+from backend.routers.user import user_router
+from backend.db.database import engine, Base
 from contextlib import asynccontextmanager
 
 load_dotenv()
