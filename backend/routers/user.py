@@ -11,7 +11,7 @@ from backend.routers.auth import create_access_token, get_current_user
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hash(password)
+    return bcrypt.hash(password[:72])
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.verify(plain_password, hashed_password)
