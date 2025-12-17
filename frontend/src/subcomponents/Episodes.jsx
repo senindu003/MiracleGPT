@@ -1,5 +1,7 @@
+// src/subcomponents/Episodes.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { enhanceStory, saveStory } from "../api";
 
 export default function Episodes({ storyData, currentUser }) {
   const navigate = useNavigate();
@@ -17,7 +19,6 @@ export default function Episodes({ storyData, currentUser }) {
   const [changeTitle, setChangeTitle] = useState(false);
   const episodeRefs = useRef({});
 
-  // Debug: log the incoming storyData structure
   useEffect(() => {
     console.log("Story data received in Episodes:", storyData);
     if (storyData && Object.keys(storyData).length > 0) {
@@ -31,14 +32,12 @@ export default function Episodes({ storyData, currentUser }) {
     for (let i = 0; i <= index; i++) {
       const key = path[i];
       if (i % 2 === 0) {
-        // Even index: episode key, get from root storyData
         node = storyData[key];
         if (!node) {
           console.log(`No episode found at index ${i}, key: ${key}`);
           return null;
         }
       } else {
-        // Odd index: choice text, find choice object inside current node
         if (node && node.choices) {
           let foundChoice = null;
           Object.values(node.choices).forEach((choiceObj) => {
@@ -78,12 +77,11 @@ export default function Episodes({ storyData, currentUser }) {
 
     console.log("Current episode choices:", currentEpisode.choices);
 
-    let nextEpisodeKey = null; // Declare before usage
+    let nextEpisodeKey = null;
 
     Object.entries(currentEpisode.choices).forEach(([choiceKey, choiceObj]) => {
       console.log(`Choice key: ${choiceKey}`, choiceObj);
       if (choiceObj.text === choiceText) {
-        // Use 'leads_to' or 'next_episode' depending on your data
         nextEpisodeKey = choiceObj.leads_to || choiceObj.next_episode;
         console.log("Found next episode:", nextEpisodeKey);
       }
@@ -145,7 +143,6 @@ export default function Episodes({ storyData, currentUser }) {
     for (let i = 0; i < currentPath.length; i += 2) {
       const episode = getEpisodeByPathIndex(i);
       if (episode) {
-        // Use 'content' field if it exists, otherwise use 'story'
         const storyText = episode.content || episode.story;
         if (storyText) {
           stories.push(storyText.trim());
@@ -170,23 +167,13 @@ export default function Episodes({ storyData, currentUser }) {
     const preferredTitle = storyTitle;
     setStoryTitle("Building your story...");
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://127.0.0.1:8000/enhance", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ story: fullStoryText }),
-      });
-      if (!response.ok) {
-        throw new Error("Error enhancing story");
-      }
-      const data = await response.json();
+      const data = await enhanceStory(fullStoryText);
+
       setFullStoryText(data.enhancedStory);
-      preferredTitle == "Untitled Wireframe"
+      preferredTitle === "Untitled Wireframe"
         ? setStoryTitle(data.title)
         : setStoryTitle(preferredTitle);
+
       if (data.error) {
         throw new Error(data.error);
       }
@@ -204,23 +191,12 @@ export default function Episodes({ storyData, currentUser }) {
     if (!shouldSave) return;
     setIsSaving(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://127.0.0.1:8000/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          author: currentUser,
-          story: fullStoryText,
-          title: storyTitle,
-        }),
+      const data = await saveStory({
+        author: currentUser,
+        story: fullStoryText,
+        title: storyTitle,
       });
-      if (!response.ok) {
-        throw new Error("Error saving story");
-      }
-      const data = await response.json();
+
       localStorage.setItem("user", JSON.stringify(data.user_details));
       alert(data.message);
       navigate("/home", {
@@ -242,7 +218,6 @@ export default function Episodes({ storyData, currentUser }) {
         break;
       }
 
-      // Check if this is an ending (no choices or empty choices)
       const isEnding =
         !episode.choices || Object.keys(episode.choices).length === 0;
       const selectedChoice = path[i + 1] || null;
@@ -250,7 +225,6 @@ export default function Episodes({ storyData, currentUser }) {
 
       const isExpanded = expandedEpisodes.has(episodeId);
 
-      // Use 'content' if it exists, otherwise use 'story'
       const storyText = episode.content || episode.story || "No story content";
 
       elements.push(
@@ -321,7 +295,6 @@ export default function Episodes({ storyData, currentUser }) {
     (!lastEpisode.choices || Object.keys(lastEpisode.choices).length === 0);
   const isLastEpisodeExpanded = expandedEpisodes.has(lastEpisodeId);
 
-  // If no story data, show message
   if (!storyData || Object.keys(storyData).length === 0) {
     return (
       <div className="max-w-7xl mx-auto p-6 bg-purple-50 min-h-screen flex flex-col items-center justify-center">
@@ -376,7 +349,6 @@ export default function Episodes({ storyData, currentUser }) {
             className="relative bg-white rounded shadow-lg max-w-3xl w-full max-h-[80vh] flex flex-col p-6 pointer-events-auto"
             style={{ minWidth: "320px" }}
           >
-            {" "}
             <button
               onClick={() => {
                 setShowFullStory(false);

@@ -1,6 +1,7 @@
-import React from "react";
-import { useState } from "react";
-import { replace, useNavigate } from "react-router-dom";
+// src/components/Signup.jsx
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { signupUser } from "../api";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -21,30 +22,16 @@ const Signup = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          firstname,
-          lastname,
-          username,
-          email,
-          password,
-        }),
+      const data = await signupUser({
+        firstname,
+        lastname,
+        username,
+        email,
+        password,
       });
 
-      if (!response.ok) {
-        const errdata = await response.json();
-        throw new Error(errdata.detail);
-      }
-
-      const data = await response.json();
       alert(data.message);
-      navigate("/login", {
-        replace: false,
-      });
+      navigate("/login", { replace: false });
     } catch (error) {
       console.error(error.message);
       alert(error.message);

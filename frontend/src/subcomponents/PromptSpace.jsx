@@ -1,3 +1,4 @@
+// src/subcomponents/PromptSpace.jsx
 import React, { useState, Fragment } from "react";
 import {
   Listbox,
@@ -7,6 +8,7 @@ import {
   Transition,
 } from "@headlessui/react";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { setMagic } from "../api";
 
 const options = {
   theme: [
@@ -135,7 +137,6 @@ function Dropdown({ label, options, selected, setSelected, id }) {
 }
 
 const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
-  // State hooks for all dropdowns
   const [theme, setTheme] = useState(options.theme[4]);
   const [mainCharacters, setMainCharacters] = useState(
     options.mainCharacters[2]
@@ -152,7 +153,7 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
     options.specialRequests[0]
   );
   const [additionalInstructions, setAdditionalInstructions] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false); // Add loading state
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
     const request = {
@@ -168,64 +169,35 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
       additionalInstructions,
     };
 
-    console.log("Sending request:", request); // Add this
+    console.log("Sending request:", request);
 
     try {
-      setIsGenerating(true); // Start loading
-      if (onGenerate) onGenerate(); // Notify parent about generation start
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://127.0.0.1:8000/set_magic", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(request),
-      });
+      setIsGenerating(true);
+      if (onGenerate) onGenerate();
 
-      console.log("Response status:", response.status); // Add this
+      const data = await setMagic(request);
+      console.log("API response data:", data);
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("API response data:", data); // Add this to see full response
-
-        if (data.story && typeof data.story === "object") {
-          console.log("Story is object:", data.story); // Add this
-          // Pass the story data to parent
-          if (onStoryGenerated) onStoryGenerated(data.story);
-        } else if (data.story && typeof data.story === "string") {
-          console.log("Story is string:", data.story.substring(0, 100) + "..."); // Add this
-          try {
-            const parsedStory = JSON.parse(data.story);
-            console.log("Parsed story:", parsedStory); // This should now show
-            if (onStoryGenerated) onStoryGenerated(parsedStory);
-          } catch (error) {
-            console.error("JSON parse error:", error); // Add this
-            console.error("String that failed to parse:", data.story); // Add this
-            alert(`Error parsing story: ${error.message}`);
-            // Reset loading state on error
-            if (onStoryGenerated) onStoryGenerated({});
-          }
-        } else {
-          console.error("No story in response:", data); // Add this
-          alert("No story data received from server");
+      if (data.story && typeof data.story === "object") {
+        if (onStoryGenerated) onStoryGenerated(data.story);
+      } else if (data.story && typeof data.story === "string") {
+        try {
+          const parsedStory = JSON.parse(data.story);
+          console.log("Parsed story:", parsedStory);
+          if (onStoryGenerated) onStoryGenerated(parsedStory);
+        } catch (error) {
+          console.error("JSON parse error:", error);
+          console.error("String that failed to parse:", data.story);
+          alert(`Error parsing story: ${error.message}`);
           if (onStoryGenerated) onStoryGenerated({});
         }
       } else {
-        console.error("Response not OK:", response.status); // Add this
-        const errorText = await response.text();
-        console.error("Error response text:", errorText); // Add this
-        let errorMessage = response.statusText;
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          // Not JSON
-        }
-        throw new Error(errorMessage);
+        console.error("No story in response:", data);
+        alert("No story data received from server");
+        if (onStoryGenerated) onStoryGenerated({});
       }
     } catch (error) {
-      console.error("Fetch error:", error); // Add this
+      console.error("Fetch error:", error);
       alert(`Error: ${error.message}`);
       if (onStoryGenerated) onStoryGenerated({});
     } finally {

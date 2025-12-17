@@ -1,6 +1,7 @@
-import React from "react";
-import { useState } from "react";
+// src/components/Login.jsx
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { loginUser } from "../api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -10,29 +11,13 @@ const Login = () => {
   const handleSubmitLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:8000/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+      const data = await loginUser({ email, password });
 
-      if (!response.ok) {
-        const errdata = await response.json();
-        throw new Error(errdata.detail);
-      }
-
-      const data = await response.json();
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user_details));
       alert(data.message);
-      navigate("/home", {
-        replace: false,
-      });
+
+      navigate("/home", { replace: false });
     } catch (error) {
       console.error(error.message);
       alert(error.message);

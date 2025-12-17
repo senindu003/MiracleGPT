@@ -1,7 +1,9 @@
+// src/components/Home.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Episodes from "../subcomponents/Episodes";
 import PromptSpace from "../subcomponents/PromptSpace";
+import { getStory, deleteStory } from "../api";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -30,10 +32,9 @@ const Home = () => {
   const [isStoriesOpen, setIsStoriesOpen] = useState(false);
   const [isMyStoriesOpen, setIsMyStoriesOpen] = useState(false);
   const [storyData, setStoryData] = useState({});
-  const [isGenerating, setIsGenerating] = useState(false); // New loading state
+  const [isGenerating, setIsGenerating] = useState(false);
   const episodesRef = useRef(null);
 
-  // NEW: Manage stories in state to update UI after deletion
   const [userStories, setUserStories] = useState(() => {
     const ids = current_user.stories?.id || [];
     const titles = current_user.stories?.title || [];
@@ -52,36 +53,20 @@ const Home = () => {
     }
   };
 
-  // Function passed to PromptSpace to update the story data
   const handleStoryGenerated = (newStoryData) => {
     console.log("Received story data in Home:", newStoryData);
     setStoryData(newStoryData);
     setIsGenerating(false);
     scrollToEpisodes();
   };
-  // Function to start generation
+
   const handleStartGeneration = () => {
     setIsGenerating(true);
   };
 
   const handleGetStory = async (story_id) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://127.0.0.1:8000/get_story/${story_id}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
-      if (!response.ok) {
-        const errdata = await response.json();
-        throw new Error(errdata.detail);
-      }
-      const data = await response.json();
+      const data = await getStory(story_id);
       console.log(data);
       sessionStorage.setItem("pdfTitle", data.title);
       sessionStorage.setItem("pdfContent", data.story);
@@ -92,7 +77,6 @@ const Home = () => {
     }
   };
 
-  // UPDATED: handleDeleteStory updates userStories state after deletion
   const handleDeleteStory = async (story_id) => {
     const story = userStories.find((s) => s.id === story_id);
     const agreed = window.confirm(
@@ -100,24 +84,8 @@ const Home = () => {
     );
     if (!agreed) return;
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://127.0.0.1:8000/delete_story/${story_id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
-      if (!response.ok) {
-        const errdata = await response.json();
-        throw new Error(errdata.detail);
-      }
-      const data = await response.json();
+      const data = await deleteStory(story_id);
 
-      // Remove deleted story from state so UI updates immediately
       setUserStories((prevStories) =>
         prevStories.filter((s) => s.id !== story_id)
       );
@@ -129,7 +97,6 @@ const Home = () => {
     }
   };
 
-  // Scroll to top on page load
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -194,7 +161,6 @@ const Home = () => {
               <span className="cursor-pointer">Library</span>
             </button>
 
-            {/* Accordion content */}
             {isStoriesOpen && (
               <div
                 id="stories-accordion"
@@ -210,7 +176,6 @@ const Home = () => {
                   Create New
                 </a>
 
-                {/* Nested Accordion for My Stories */}
                 <div>
                   <button
                     onClick={() => setIsMyStoriesOpen(!isMyStoriesOpen)}
@@ -259,7 +224,7 @@ const Home = () => {
                               fill="Red"
                               viewBox="0 0 16 16"
                               className="bi bi-trash cursor-pointer rounded-full inline-block ml-5"
-                              onClick={() => handleDeleteStory(story.id)} // FIXED: wrapped in arrow function
+                              onClick={() => handleDeleteStory(story.id)}
                             >
                               <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
                               <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
@@ -302,7 +267,6 @@ const Home = () => {
           isOpen ? "ml-64" : "ml-0"
         }`}
       >
-        {/* Pass the handler functions down to PromptSpace */}
         <PromptSpace
           onGenerate={() => {
             handleStartGeneration();

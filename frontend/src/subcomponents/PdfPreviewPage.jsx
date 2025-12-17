@@ -1,3 +1,4 @@
+// src/subcomponents/PdfPreviewPage.jsx
 import React, { useEffect, useState } from "react";
 import {
   Document,
@@ -8,7 +9,6 @@ import {
   PDFViewer,
 } from "@react-pdf/renderer";
 
-// Define MyDocument outside the component
 const styles = StyleSheet.create({
   page: {
     padding: 40,
