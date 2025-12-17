@@ -70,7 +70,7 @@ const Home = () => {
       console.log(data);
       sessionStorage.setItem("pdfTitle", data.title);
       sessionStorage.setItem("pdfContent", data.story);
-      window.open("/pdf_preview", "_blank", "titlebar=0");
+      navigate("/pdf_preview");
     } catch (error) {
       console.error(error.message);
       alert(error.message);
