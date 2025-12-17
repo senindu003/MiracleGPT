@@ -165,7 +165,7 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
     if (!agreed) return;
     setIsEnhancing(true);
     const preferredTitle = storyTitle;
-    setStoryTitle("Building your story...");
+    setStoryTitle("Building your story... Don't refresh the page!");
     try {
       const data = await enhanceStory(fullStoryText);
 
@@ -421,7 +421,7 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
                 disabled={isEnhancing}
               >
                 {count >= 1 ? "Enhance more 🧙🏻‍♂️" : "Let's Build Up Story 🚀"}
-                {!count >= 1 && (
+                {!count >= 1 && !isEnhancing && (
                   <span
                     className="absolute top-1 right-1 size-3 animate-ping rounded-full bg-red-700"
                     disabled={isEnhancing}
