@@ -9,7 +9,8 @@ from contextlib import asynccontextmanager
 
 load_dotenv()
 
-origins = os.getenv("ORIGINS").split(",")
+raw_origins = os.getenv("ORIGINS", "")
+origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
 
 @asynccontextmanager
 async def lifespan(app):
@@ -20,14 +21,14 @@ async def lifespan(app):
         print("Error creating tables:", e)
     yield
     print("FastAPI server is shutting down!")
-    
+
 app = FastAPI(lifespan=lifespan)
 
 main_router = APIRouter()
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to specify allowed origins
+    allow_origins=origins,  # Adjust this to specify allowed origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

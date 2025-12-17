@@ -12,7 +12,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
     # Fallback for local development if env var is missing
-    DATABASE_URL = "sqlite:///./app.db"  # or your preferred local DB
+    DATABASE_URL = "mysql+pymysql://root:%23Pas186703@localhost:3306/miraclegpt?charset=utf8mb4"  # or your preferred local DB
 
 # 2. Normalize postgres URL for SQLAlchemy
 if DATABASE_URL.startswith("postgres://"):
