@@ -6,16 +6,6 @@ import { enhanceStory, saveStory } from "../api";
 export default function Episodes({ storyData, currentUser, onStorySaved }) {
   const navigate = useNavigate();
 
-  const handleSave = async () => {
-    const res = await saveStory({ author: currentUser, story, title });
-    // res expected: { message, user_details, story_id, title }
-    onStorySaved?.({
-      id: res.story_id, // or whatever field your backend returns
-      title: res.title,
-      user_details: res.user_details,
-    });
-  };
-
   const [path, setPath] = useState(["episode_1"]);
   const [expandedEpisodes, setExpandedEpisodes] = useState(
     new Set(["episode_1"])
@@ -208,6 +198,12 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
       });
 
       localStorage.setItem("user", JSON.stringify(data.user_details));
+
+      onStorySaved?.({
+        id: data.story_id, // adjust to your API field name
+        title: data.title || storyTitle,
+        user_details: data.user_details,
+      });
       alert(data.message);
       navigate("/home", {
         replace: false,
