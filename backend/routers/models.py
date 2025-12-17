@@ -12,7 +12,7 @@ class UserRequest(BaseModel):
     audience: str
     emojis: str
     specialRequests: str
-    additionalInstructions: Optional[str] = None
+    additionalInstructions: str
 
 class UserResponse(BaseModel):
     story: Dict[str, Any]
