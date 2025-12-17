@@ -37,7 +37,7 @@ def extract_json(text):
     return text
 
 
-GENERATE_LIMIT_PER_DAY = 3
+GENERATE_LIMIT_PER_DAY = 5
 
 def get_or_create_today_usage(db: Session, username: str) -> Usage:
     today = date.today()
