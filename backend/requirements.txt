@@ -16,3 +16,6 @@ passlib[bcrypt]==1.7.4
 
 # CORS and file uploads
 python-multipart==0.0.18
+
+openai>=1.0.0
+
