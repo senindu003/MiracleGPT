@@ -8,7 +8,7 @@ python-dotenv==1.0.1
 
 # Database drivers
 pymysql==1.1.1           # MySQL driver (for local)
-psycopg2-binary==2.9.10  # PostgreSQL driver (for Railway)
+psycopg2-binary          # PostgreSQL driver (for Railway)
 
 # Auth and security
 python-jose[cryptography]==3.3.0

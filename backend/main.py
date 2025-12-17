@@ -13,10 +13,14 @@ origins = os.getenv("ORIGINS").split(",")
 
 @asynccontextmanager
 async def lifespan(app):
-    Base.metadata.create_all(bind=engine)
+    # Safe table creation – won’t crash the app
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print("Error creating tables:", e)
     yield
     print("FastAPI server is shutting down!")
-
+    
 app = FastAPI(lifespan=lifespan)
 
 main_router = APIRouter()
