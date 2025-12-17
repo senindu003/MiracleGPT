@@ -1,5 +1,5 @@
 # db/models.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 
 class UserRequest(BaseModel):
@@ -55,7 +55,7 @@ class addUser(BaseModel):
     lastname: str
     username: str
     email: str
-    password: str
+    password: str = Field(..., max_length=72)
 
     class config:
         orm_mode = True
