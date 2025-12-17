@@ -68,8 +68,8 @@ const PdfPreviewPage = () => {
   const [content, setContent] = useState("");
 
   useEffect(() => {
-    const savedTitle = sessionStorage.getItem("pdfTitle") || "No Title";
-    const savedContent = sessionStorage.getItem("pdfContent") || "No Content";
+    const savedTitle = localStorage.getItem("pdfTitle") || "No Title";
+    const savedContent = localStorage.getItem("pdfContent") || "No Content";
     setTitle(savedTitle);
     setContent(savedContent);
   }, []);

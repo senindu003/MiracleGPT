@@ -3,8 +3,18 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { enhanceStory, saveStory } from "../api";
 
-export default function Episodes({ storyData, currentUser }) {
+export default function Episodes({ storyData, currentUser, onStorySaved }) {
   const navigate = useNavigate();
+
+  const handleSave = async () => {
+    const res = await saveStory({ author: currentUser, story, title });
+    // res expected: { message, user_details, story_id, title }
+    onStorySaved?.({
+      id: res.story_id, // or whatever field your backend returns
+      title: res.title,
+      user_details: res.user_details,
+    });
+  };
 
   const [path, setPath] = useState(["episode_1"]);
   const [expandedEpisodes, setExpandedEpisodes] = useState(
@@ -434,8 +444,8 @@ export default function Episodes({ storyData, currentUser }) {
               {count >= 1 && (
                 <button
                   onClick={() => {
-                    sessionStorage.setItem("pdfTitle", storyTitle);
-                    sessionStorage.setItem("pdfContent", fullStoryText);
+                    localStorage.setItem("pdfTitle", storyTitle);
+                    localStorage.setItem("pdfContent", fullStoryText);
                     window.open("/pdf_preview", "_blank", "titlebar=0");
                   }}
                   className="rounded-md bg-pink-600 text-white py-2 px-4 hover:bg-pink-500 transition disabled:opacity-20 disabled:cursor-not-allowed"

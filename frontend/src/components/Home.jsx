@@ -60,6 +60,20 @@ const Home = () => {
     scrollToEpisodes();
   };
 
+  const handleStorySaved = (savedData) => {
+    // savedData should contain: { id, title, user_details } or similar
+    // 1. Update localStorage "user"
+    if (savedData.user_details) {
+      localStorage.setItem("user", JSON.stringify(savedData.user_details));
+    }
+
+    // 2. Update sidebar list immediately
+    setUserStories((prev) => [
+      ...prev,
+      { id: savedData.id, title: savedData.title || "Untitled" },
+    ]);
+  };
+
   const handleStartGeneration = () => {
     setIsGenerating(true);
   };
@@ -68,9 +82,9 @@ const Home = () => {
     try {
       const data = await getStory(story_id);
       console.log(data);
-      sessionStorage.setItem("pdfTitle", data.title);
-      sessionStorage.setItem("pdfContent", data.story);
-      navigate("/pdf_preview");
+      localStorage.setItem("pdfTitle", data.title);
+      localStorage.setItem("pdfContent", data.story);
+      window.open("/pdf-preview", "_blank", "titlebar=0");
     } catch (error) {
       console.error(error.message);
       alert(error.message);
@@ -294,6 +308,7 @@ const Home = () => {
             <Episodes
               storyData={storyData}
               currentUser={current_user.username}
+              onStorySaved={handleStorySaved}
             />
           ) : (
             !isGenerating && (
