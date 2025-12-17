@@ -170,10 +170,12 @@ export default function Episodes({ storyData, currentUser }) {
     const preferredTitle = storyTitle;
     setStoryTitle("Building your story...");
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch("http://127.0.0.1:8000/enhance", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ story: fullStoryText }),
       });
@@ -202,10 +204,12 @@ export default function Episodes({ storyData, currentUser }) {
     if (!shouldSave) return;
     setIsSaving(true);
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch("http://127.0.0.1:8000/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           author: currentUser,
@@ -217,10 +221,10 @@ export default function Episodes({ storyData, currentUser }) {
         throw new Error("Error saving story");
       }
       const data = await response.json();
+      localStorage.setItem("user", JSON.stringify(data.user_details));
       alert(data.message);
       navigate("/home", {
-        replace: true,
-        state: data.user_details,
+        replace: false,
       });
     } catch (error) {
       console.error(error);

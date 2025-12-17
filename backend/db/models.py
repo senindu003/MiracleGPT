@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import LONGTEXT
 from db.database import Base
@@ -12,6 +12,7 @@ class User(Base):
     password = Column(LONGTEXT, nullable=False)
 
     stories = relationship("Story", back_populates="user")
+    usages = relationship("Usage", back_populates="user")
 
 class Story(Base):
     __tablename__ = "stories"
@@ -22,3 +23,18 @@ class Story(Base):
     created_at = Column(DateTime, nullable=False)
     
     user = relationship("User", back_populates="stories")
+
+
+class Usage(Base):
+    __tablename__ = "usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(55), ForeignKey("users.username"), index=True, nullable=False)
+    date = Column(Date, index=True, nullable=False)
+    generate_count = Column(Integer, nullable=False, default=0)
+
+    user = relationship("User", back_populates="usages")
+
+    __table_args__ = (
+        UniqueConstraint("username", "date", name="uq_usage_user_date"),
+    )

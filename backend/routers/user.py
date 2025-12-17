@@ -5,6 +5,9 @@ from routers.models import addUser, checkUser, addStory
 from db.models import User, Story
 from passlib.hash import bcrypt
 from sqlalchemy import or_, func
+from routers.auth import create_access_token, get_current_user
+
+
 
 def hash_password(password):
   return bcrypt.hash(password)
@@ -33,12 +36,17 @@ async def login(user: checkUser, db: Session = Depends(get_db)) -> dict:
     raise HTTPException(status_code=400, detail="User not found")
   if not verify_password(user.password, existing_user.password):
     raise HTTPException(status_code=400, detail="Invalid password")
+  
+  access_token = create_access_token(data={"sub": existing_user.username})
   user_stories = db.query(Story).filter(Story.author == existing_user.username).order_by(Story.created_at.desc()).all()
-  return {"message": "Login successful", "user_details": {"username": existing_user.username, "stories":{"id": [story.story_id for story in user_stories], "title": [story.title for story in user_stories]} }}
+  return {"message": "Login successful", "access_token": access_token, "token_type": "bearer", "user_details": {"username": existing_user.username, "stories":{"id": [story.story_id for story in user_stories], "title": [story.title for story in user_stories]} }}
 
 
 @user_router.post("/save")
-def post_story(story: addStory, db: Session = Depends(get_db)) -> dict:
+def post_story(story: addStory, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
+  if story.author != current_user.username:
+        raise HTTPException(status_code=403, detail="Not allowed to post as this user")
+
   new_story = Story(author=story.author, title=story.title, story=story.story, created_at=func.now())
   db.add(new_story)
   db.commit()
@@ -48,20 +56,36 @@ def post_story(story: addStory, db: Session = Depends(get_db)) -> dict:
   
 
 @user_router.get("/get_story/{req_story}")
-def get_story(req_story: int, db: Session = Depends(get_db)) -> dict:
+def get_story(req_story: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
   story = db.query(Story).filter(Story.story_id == req_story).first()
   if not story:
     raise HTTPException(status_code=404, detail="Story not found")
+  if story.author != current_user.username:
+        raise HTTPException(status_code=403, detail="Not allowed to view this story")
   return {"title": story.title, "story": story.story}
 
 
 @user_router.delete("/delete_story/{story_id}")
-def delete_story(story_id: int, db: Session = Depends(get_db)) -> dict:
+def delete_story(story_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
   story = db.query(Story).filter(Story.story_id == story_id).first()
   if not story:
     raise HTTPException(status_code=404, detail="Story not found!")
+  if story.author != current_user.username:
+        raise HTTPException(status_code=403, detail="Not allowed to delete this story")
   db.delete(story)
   db.commit()
   return {"message": "Story deleted successfully"}
+
+@user_router.get("/me")
+async def read_current_user(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    return {
+        "username": current_user.username,
+        "email": current_user.email,
+        "firstname": current_user.firstname,
+        "lastname": current_user.lastname,
+    }
+
 
  

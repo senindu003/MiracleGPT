@@ -4,10 +4,24 @@ import Episodes from "../subcomponents/Episodes";
 import PromptSpace from "../subcomponents/PromptSpace";
 
 const Home = () => {
-  const location = useLocation();
   const navigate = useNavigate();
 
-  const current_user = location.state || {
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
+
+  let storedUser = null;
+  try {
+    const raw = localStorage.getItem("user");
+    storedUser = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    storedUser = null;
+  }
+
+  const current_user = storedUser || {
     username: "Guest",
     stories: { id: [], title: [] },
   };
@@ -52,12 +66,14 @@ const Home = () => {
 
   const handleGetStory = async (story_id) => {
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(
         `http://127.0.0.1:8000/get_story/${story_id}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         }
       );
@@ -84,12 +100,14 @@ const Home = () => {
     );
     if (!agreed) return;
     try {
+      const token = localStorage.getItem("token");
       const response = await fetch(
         `http://127.0.0.1:8000/delete_story/${story_id}`,
         {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         }
       );
@@ -266,10 +284,9 @@ const Home = () => {
 
           <button
             onClick={() => {
-              navigate("/login", {
-                replace: true,
-                state: { current_user: "Guest" },
-              });
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              navigate("/login", { replace: true });
               closeNav();
             }}
             className="text-gray-400 text-lg hover:text-white transition-colors text-left cursor-pointer"

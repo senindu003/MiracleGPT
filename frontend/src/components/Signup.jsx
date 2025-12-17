@@ -42,9 +42,8 @@ const Signup = () => {
 
       const data = await response.json();
       alert(data.message);
-      navigate("/home", {
-        replace: true,
-        state: data.user_details,
+      navigate("/login", {
+        replace: false,
       });
     } catch (error) {
       console.error(error.message);

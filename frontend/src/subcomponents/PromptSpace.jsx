@@ -173,11 +173,12 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
     try {
       setIsGenerating(true); // Start loading
       if (onGenerate) onGenerate(); // Notify parent about generation start
-
+      const token = localStorage.getItem("token");
       const response = await fetch("http://127.0.0.1:8000/set_magic", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(request),
       });
