@@ -1,0 +1,18 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+sqlalchemy==2.0.37
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+python-dotenv==1.0.1
+
+# Database drivers
+pymysql==1.1.1           # MySQL driver (for local)
+psycopg2-binary==2.9.10  # PostgreSQL driver (for Railway)
+
+# Auth and security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# CORS and file uploads
+python-multipart==0.0.18
