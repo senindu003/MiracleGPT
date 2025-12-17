@@ -14,13 +14,8 @@ origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
 
 @asynccontextmanager
 async def lifespan(app):
-    # Safe table creation – won’t crash the app
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        print("Error creating tables:", e)
+    Base.metadata.create_all(bind=engine)
     yield
-    print("FastAPI server is shutting down!")
 
 app = FastAPI(lifespan=lifespan)
 
