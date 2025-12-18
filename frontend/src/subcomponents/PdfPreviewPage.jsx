@@ -7,13 +7,13 @@ import {
   View,
   StyleSheet,
   PDFViewer,
+  PDFDownloadLink,
 } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontFamily: "Helvetica",
-    textAlign: "justify",
   },
   header: {
     borderBottomWidth: 2,
@@ -26,12 +26,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
-
   content: {
     fontSize: 14,
     color: "#333333",
-    whiteSpace: "pre-wrap",
-    lineHeight: 1.2,
+    lineHeight: 1.4,
+    marginBottom: 4,
   },
   footer: {
     position: "absolute",
@@ -42,30 +41,55 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#999999",
   },
-
   end: {
     marginTop: 20,
     textAlign: "center",
+    fontSize: 10,
   },
 });
 
-const MyDocument = ({ title, content }) => (
-  <Document>
-    <Page style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-      </View>
-      <Text style={styles.content}>{content}</Text>
-      <Text style={styles.end}>
-        --------------------------------------END--------------------------------------
-      </Text>
-    </Page>
-  </Document>
-);
+// Helper: split an array of paragraphs into chunks for multiple pages
+const splitIntoChunks = (paragraphs, size = 40) => {
+  const chunks = [];
+  for (let i = 0; i < paragraphs.length; i += size) {
+    chunks.push(paragraphs.slice(i, i + size));
+  }
+  return chunks;
+};
+
+const MyDocument = ({ title, content }) => {
+  const paragraphs = (content || "").split(/\n+/).filter(Boolean);
+  // Adjust the chunk size depending on average paragraph length
+  const pages = splitIntoChunks(paragraphs, 40);
+
+  return (
+    <Document>
+      {pages.map((pageParagraphs, pageIndex) => (
+        <Page key={pageIndex} style={styles.page}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+          </View>
+
+          {pageParagraphs.map((paragraph, idx) => (
+            <Text key={idx} style={styles.content}>
+              {paragraph}
+            </Text>
+          ))}
+
+          <Text style={styles.end}>
+            Page {pageIndex + 1} / {pages.length}
+          </Text>
+
+          <Text style={styles.footer}>Generated Story Preview</Text>
+        </Page>
+      ))}
+    </Document>
+  );
+};
 
 const PdfPreviewPage = () => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState("No Title");
+  const [content, setContent] = useState("No Content");
 
   useEffect(() => {
     const savedTitle = localStorage.getItem("pdfTitle") || "No Title";
@@ -74,11 +98,58 @@ const PdfPreviewPage = () => {
     setContent(savedContent);
   }, []);
 
+  const doc = <MyDocument title={title} content={content} />;
+
   return (
-    <div style={{ height: "100vh" }}>
-      <PDFViewer width="100%" height="100%">
-        <MyDocument title={title} content={content} />
-      </PDFViewer>
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        overflow: "auto", // important for mobile scrolling
+        margin: 0,
+        padding: 0,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Top bar with download option */}
+      <div
+        style={{
+          padding: "8px",
+          textAlign: "center",
+          backgroundColor: "#f3f3f3",
+          borderBottom: "1px solid #ddd",
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ marginBottom: 4, fontWeight: "bold" }}>
+          {title || "Story Preview"}
+        </div>
+        <PDFDownloadLink document={doc} fileName={`${title || "story"}.pdf`}>
+          {({ loading }) =>
+            loading ? "Preparing PDF..." : "Download / Open in external app"
+          }
+        </PDFDownloadLink>
+      </div>
+
+      {/* PDF viewer area */}
+      <div
+        style={{
+          flexGrow: 1,
+          minHeight: 0, // helps flexbox + viewport on mobile
+        }}
+      >
+        <PDFViewer
+          style={{
+            width: "100%",
+            height: "100%",
+            border: "none",
+          }}
+          showToolbar={true}
+        >
+          {doc}
+        </PDFViewer>
+      </div>
     </div>
   );
 };
