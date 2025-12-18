@@ -79,12 +79,19 @@ const Home = () => {
   };
 
   const handleGetStory = async (story_id) => {
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     try {
       const data = await getStory(story_id);
       console.log(data);
       localStorage.setItem("pdfTitle", data.title);
       localStorage.setItem("pdfContent", data.story);
-      window.open("/pdf_preview", "_blank", "noopener,noreferrer");
+      if (isMobile) {
+        // Use SPA navigation on mobile (no popup issues)
+        navigate("/pdf_preview");
+      } else {
+        // Keep new tab behavior on desktop
+        window.open("/pdf_preview", "_blank", "noopener,noreferrer");
+      }
     } catch (error) {
       console.error(error.message);
       alert(error.message);
