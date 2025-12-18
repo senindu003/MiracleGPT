@@ -15,7 +15,7 @@ const styles = StyleSheet.create({
     padding: 40,
     fontFamily: "Helvetica",
   },
-  header: {
+  titleWrapper: {
     borderBottomWidth: 2,
     borderBottomStyle: "solid",
     paddingBottom: 10,
@@ -30,7 +30,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333333",
     lineHeight: 1.4,
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: "justify",
   },
   footer: {
     position: "absolute",
@@ -41,48 +42,29 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#999999",
   },
-  end: {
-    marginTop: 20,
-    textAlign: "center",
-    fontSize: 10,
-  },
 });
 
-// Helper: split an array of paragraphs into chunks for multiple pages
-const splitIntoChunks = (paragraphs, size = 40) => {
-  const chunks = [];
-  for (let i = 0; i < paragraphs.length; i += size) {
-    chunks.push(paragraphs.slice(i, i + size));
-  }
-  return chunks;
-};
-
+// Document that shows title once, then lets text flow across pages
 const MyDocument = ({ title, content }) => {
+  // Split into paragraphs for nicer wrapping, but NO manual page chunking
   const paragraphs = (content || "").split(/\n+/).filter(Boolean);
-  // Adjust the chunk size depending on average paragraph length
-  const pages = splitIntoChunks(paragraphs, 40);
 
   return (
     <Document>
-      {pages.map((pageParagraphs, pageIndex) => (
-        <Page key={pageIndex} style={styles.page}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-          </View>
+      {/* First page: title + content */}
+      <Page style={styles.page}>
+        <View style={styles.titleWrapper}>
+          <Text style={styles.title}>{title}</Text>
+        </View>
 
-          {pageParagraphs.map((paragraph, idx) => (
-            <Text key={idx} style={styles.content}>
-              {paragraph}
-            </Text>
-          ))}
-
-          <Text style={styles.end}>
-            Page {pageIndex + 1} / {pages.length}
+        {paragraphs.map((paragraph, idx) => (
+          <Text key={idx} style={styles.content}>
+            {paragraph}
           </Text>
+        ))}
 
-          <Text style={styles.footer}>Generated Story Preview</Text>
-        </Page>
-      ))}
+        <Text style={styles.footer}>Generated Story Preview</Text>
+      </Page>
     </Document>
   );
 };
@@ -105,14 +87,14 @@ const PdfPreviewPage = () => {
       style={{
         width: "100vw",
         height: "100vh",
-        overflow: "auto", // important for mobile scrolling
+        overflow: "auto",
         margin: 0,
         padding: 0,
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Top bar with download option */}
+      {/* Top bar with title + download link */}
       <div
         style={{
           padding: "8px",
