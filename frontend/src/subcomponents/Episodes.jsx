@@ -3,7 +3,13 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { enhanceStory, saveStory } from "../api";
 
-export default function Episodes({ storyData, currentUser, onStorySaved }) {
+export default function Episodes({
+  storyData,
+  currentUser,
+  onStorySaved,
+  onShowFullStory,
+  offShowFullStory,
+}) {
   const navigate = useNavigate();
 
   const [path, setPath] = useState(["episode_1"]);
@@ -337,7 +343,10 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
               Try Again with different choices 🔄
             </button>
             <button
-              onClick={handleGetStory}
+              onClick={() => {
+                handleGetStory();
+                onShowFullStory();
+              }}
               className="rounded-md bg-green-600 text-white py-2 px-4 hover:bg-green-500 transition"
             >
               Get Wireframe
@@ -368,6 +377,7 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
                 setShowFullStory(false);
                 setCount(0);
                 setIsSaving(false);
+                offShowFullStory();
               }}
               className="absolute top-2 right-2 rounded-md  text-white py-2 px-4 hover:cursor-pointer transition disabled:opacity-20 disabled:cursor-not-allowed"
               disabled={isEnhancing}
@@ -429,7 +439,7 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
                 disabled={isEnhancing}
               >
                 {count >= 1 ? "Enhance more 🧙🏻‍♂️" : "Let's Build Up Story 🚀"}
-                {!count >= 1 && !isEnhancing && (
+                {count < 1 && !isEnhancing && (
                   <span
                     className="absolute top-1 right-1 size-3 animate-ping rounded-full bg-red-700"
                     disabled={isEnhancing}

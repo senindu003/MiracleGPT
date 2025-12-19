@@ -35,6 +35,7 @@ const Home = () => {
   const [isStoriesOpen, setIsStoriesOpen] = useState(false);
   const [isMyStoriesOpen, setIsMyStoriesOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showFullStory, setShowFullStory] = useState(false);
 
   // --- Persisted storyData (restored on refresh) ---
   const [storyData, setStoryData] = useState(() => {
@@ -315,6 +316,7 @@ const Home = () => {
             scrollToEpisodes();
           }}
           onStoryGenerated={handleStoryGenerated}
+          showFullStory={showFullStory}
         />
 
         <div
@@ -337,6 +339,12 @@ const Home = () => {
               storyData={storyData}
               currentUser={current_user.username}
               onStorySaved={handleStorySaved}
+              onShowFullStory={() => {
+                setShowFullStory(true);
+              }}
+              offShowFullStory={() => {
+                setShowFullStory(false);
+              }}
             />
           ) : (
             !isGenerating && (

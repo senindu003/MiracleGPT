@@ -160,7 +160,7 @@ function Dropdown({ label, options, selected, setSelected, id }) {
   );
 }
 
-const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
+const PromptSpace = ({ onGenerate, onStoryGenerated, showFullStory }) => {
   const [theme, setTheme] = useState(options.theme[4]);
   const [mainCharacters, setMainCharacters] = useState(
     options.mainCharacters[2]
@@ -243,7 +243,14 @@ const PromptSpace = ({ onGenerate, onStoryGenerated }) => {
         <h2 className="text-center text-xl font-semibold text-purple-500 mb-8">
           Interactive Story Generator
         </h2>
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form
+          className={`space-y-6 ${
+            showFullStory
+              ? "opacity-50 pointer-events-none select-none"
+              : "opacity-100"
+          } transition-all`}
+          onSubmit={handleSubmit}
+        >
           <Dropdown
             label="Theme / Genre:"
             options={options.theme}
