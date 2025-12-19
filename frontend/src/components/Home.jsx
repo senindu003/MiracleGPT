@@ -5,21 +5,23 @@ import Episodes from "../subcomponents/Episodes";
 import PromptSpace from "../subcomponents/PromptSpace";
 import { getStory, deleteStory } from "../api";
 
+const STORY_WIREFRAME_KEY = "miracle_story_wireframe_v1"; // storage key (versioned)
+
 const Home = () => {
   const navigate = useNavigate();
+  const episodesRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login", { replace: true });
-    }
+    if (!token) navigate("/login", { replace: true });
   }, [navigate]);
 
+  // --- current user from localStorage ---
   let storedUser = null;
   try {
     const raw = localStorage.getItem("user");
     storedUser = raw ? JSON.parse(raw) : null;
-  } catch (e) {
+  } catch {
     storedUser = null;
   }
 
@@ -28,20 +30,39 @@ const Home = () => {
     stories: { id: [], title: [] },
   };
 
+  // --- UI state ---
   const [isOpen, setIsOpen] = useState(false);
   const [isStoriesOpen, setIsStoriesOpen] = useState(false);
   const [isMyStoriesOpen, setIsMyStoriesOpen] = useState(false);
-  const [storyData, setStoryData] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
-  const episodesRef = useRef(null);
+
+  // --- Persisted storyData (restored on refresh) ---
+  const [storyData, setStoryData] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(STORY_WIREFRAME_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Whenever storyData changes, persist it
+  useEffect(() => {
+    try {
+      if (storyData && Object.keys(storyData).length > 0) {
+        sessionStorage.setItem(STORY_WIREFRAME_KEY, JSON.stringify(storyData));
+      } else {
+        sessionStorage.removeItem(STORY_WIREFRAME_KEY);
+      }
+    } catch {
+      // ignore quota / storage errors
+    }
+  }, [storyData]);
 
   const [userStories, setUserStories] = useState(() => {
     const ids = current_user.stories?.id || [];
     const titles = current_user.stories?.title || [];
-    return ids.map((id, idx) => ({
-      id,
-      title: titles[idx] || "Untitled",
-    }));
+    return ids.map((id, idx) => ({ id, title: titles[idx] || "Untitled" }));
   });
 
   const openNav = () => setIsOpen(true);
@@ -61,37 +82,26 @@ const Home = () => {
   };
 
   const handleStorySaved = (savedData) => {
-    // savedData should contain: { id, title, user_details } or similar
-    // 1. Update localStorage "user"
     if (savedData.user_details) {
       localStorage.setItem("user", JSON.stringify(savedData.user_details));
     }
-
-    // 2. Update sidebar list immediately
     setUserStories((prev) => [
       ...prev,
       { id: savedData.id, title: savedData.title || "Untitled" },
     ]);
   };
 
-  const handleStartGeneration = () => {
-    setIsGenerating(true);
-  };
+  const handleStartGeneration = () => setIsGenerating(true);
 
   const handleGetStory = async (story_id) => {
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     try {
       const data = await getStory(story_id);
-      console.log(data);
       localStorage.setItem("pdfTitle", data.title);
       localStorage.setItem("pdfContent", data.story);
-      if (isMobile) {
-        // Use SPA navigation on mobile (no popup issues)
-        navigate("/pdf_preview");
-      } else {
-        // Keep new tab behavior on desktop
-        window.open("/pdf_preview", "_blank", "noopener,noreferrer");
-      }
+
+      if (isMobile) navigate("/pdf_preview");
+      else window.open("/pdf_preview", "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error(error.message);
       alert(error.message);
@@ -104,13 +114,10 @@ const Home = () => {
       `Are you sure to delete "${story?.title}" story?`
     );
     if (!agreed) return;
+
     try {
       const data = await deleteStory(story_id);
-
-      setUserStories((prevStories) =>
-        prevStories.filter((s) => s.id !== story_id)
-      );
-
+      setUserStories((prev) => prev.filter((s) => s.id !== story_id));
       alert(data.message);
     } catch (error) {
       console.error(error.message);
@@ -122,9 +129,16 @@ const Home = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const clearCurrentWireframe = () => {
+    setStoryData({});
+    try {
+      sessionStorage.removeItem(STORY_WIREFRAME_KEY);
+    } catch {}
+  };
+
   return (
     <>
-      {/* Fixed hamburger button always visible */}
+      {/* Fixed hamburger button */}
       <button
         onClick={openNav}
         className="fixed top-5 left-5 z-200 text-white bg-gray-900 px-3 py-1.5 text-lg rounded hover:bg-gray-700 focus:outline-none"
@@ -147,12 +161,13 @@ const Home = () => {
         >
           &times;
         </button>
+
         <nav
           className={`flex flex-col space-y-6 pl-8 transition-opacity duration-300 ${
             isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         >
-          {/* User Profile Section */}
+          {/* User Profile */}
           <div className="flex items-center space-x-4">
             <img
               src={current_user.profilePicUrl || "/no_photo.png"}
@@ -189,7 +204,7 @@ const Home = () => {
               >
                 <a
                   onClick={() => {
-                    setStoryData({});
+                    clearCurrentWireframe();
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className="text-gray-400 text-base hover:text-white transition-colors cursor-pointer"
@@ -270,9 +285,14 @@ const Home = () => {
 
           <button
             onClick={() => {
+              // Important: your old code called localStorage.clear() which deletes EVERYTHING
+              // including other app data. Keep it targeted.
               localStorage.removeItem("token");
               localStorage.removeItem("user");
-              localStorage.clear();
+              try {
+                sessionStorage.removeItem(STORY_WIREFRAME_KEY);
+              } catch {}
+
               navigate("/login", { replace: true });
               closeNav();
             }}
