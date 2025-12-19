@@ -1,7 +1,7 @@
 // src/api.js
 
 // Base URL from Vite env
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 console.log(API_BASE_URL);
 
 // Helper to add auth header when token exists
