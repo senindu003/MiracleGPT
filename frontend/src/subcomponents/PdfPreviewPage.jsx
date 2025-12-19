@@ -42,6 +42,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#999999",
   },
+  end: {
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
 });
 
 // Document that shows title once, then lets text flow across pages
@@ -62,8 +67,11 @@ const MyDocument = ({ title, content }) => {
             {paragraph}
           </Text>
         ))}
+        <Text style={styles.end}>*** The End ***</Text>
 
-        <Text style={styles.footer}>Generated Story Preview</Text>
+        <Text style={styles.footer}>
+          © 2025 MiracleGPT by Senindu Dinapura. All rights reserved.
+        </Text>
       </Page>
     </Document>
   );

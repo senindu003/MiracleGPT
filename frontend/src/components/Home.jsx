@@ -142,7 +142,11 @@ const Home = () => {
       {/* Fixed hamburger button */}
       <button
         onClick={openNav}
-        className="fixed top-5 left-5 z-200 text-white bg-gray-900 px-3 py-1.5 text-lg rounded hover:bg-gray-700 focus:outline-none"
+        className={`fixed top-5 left-5 z-200 text-white bg-gray-900 px-3 py-1.5 text-lg rounded hover:bg-gray-700 focus:outline-none transition-all ${
+          showFullStory || isGenerating
+            ? "opacity-50 pointer-events-none select-none"
+            : "opacity-100"
+        }`}
         aria-label="Open sidebar"
       >
         &#9776;
@@ -345,6 +349,7 @@ const Home = () => {
               offShowFullStory={() => {
                 setShowFullStory(false);
               }}
+              clearCurrentWireframe={clearCurrentWireframe}
             />
           ) : (
             !isGenerating && (

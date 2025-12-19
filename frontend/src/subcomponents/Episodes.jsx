@@ -9,6 +9,7 @@ export default function Episodes({
   onStorySaved,
   onShowFullStory,
   offShowFullStory,
+  clearCurrentWireframe,
 }) {
   const navigate = useNavigate();
 
@@ -202,6 +203,7 @@ export default function Episodes({
         story: fullStoryText,
         title: storyTitle,
       });
+      console.log("SAVE RESPONSE:", data);
 
       localStorage.setItem("user", JSON.stringify(data.user_details));
 
@@ -320,7 +322,7 @@ export default function Episodes({
 
   return (
     <div className="max-w-6xl mx-auto p-6 bg-purple-50 min-h-screen flex flex-col relative">
-      <h1 className="text-4xl font-extrabold mb-6 text-purple-800 text-center">
+      <h1 className="text-4xl font-extrabold mt-4 mb-6 text-purple-800 text-center">
         Story Wireframe
       </h1>
 
@@ -354,10 +356,11 @@ export default function Episodes({
             <button
               className="rounded-md bg-red-600 text-white py-2 px-4 hover:bg-red-500 transition"
               onClick={() => {
+                clearCurrentWireframe();
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
             >
-              Create new
+              Clear wireframe and Create New
             </button>
           </div>
         )}
@@ -388,7 +391,9 @@ export default function Episodes({
               <label
                 onClick={() => setChangeTitle(true)}
                 htmlFor="fullStoryTextarea"
-                className="font-semibold text-purple-800 mb-2 inline-block"
+                className={`font-semibold text-purple-800 mb-2 inline-block ${
+                  isEnhancing ? "text-red-500" : ""
+                }`}
               >
                 {!changeTitle && storyTitle}
                 {changeTitle && (
@@ -448,7 +453,10 @@ export default function Episodes({
               </button>
               {count >= 1 && (
                 <button
-                  onClick={handleSaveStory}
+                  onClick={() => {
+                    handleSaveStory();
+                    //window.location.reload();
+                  }}
                   className="rounded-md bg-green-600 text-white py-2 px-4 hover:bg-green-500 transition disabled:opacity-20 disabled:cursor-not-allowed"
                   disabled={isSaving}
                 >

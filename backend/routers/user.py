@@ -116,6 +116,7 @@ def post_story(
     )
     return {
         "message": "Story saved successfully",
+        "story_id": new_story.story_id,
         "user_details": {
             "username": story.author,
             "stories": {
