@@ -80,7 +80,6 @@ const options = {
     "Include romance 💕",
     "Emphasize humor 😂",
     "Keep it PG (family-friendly) ✅",
-    "No profanity 🚫🗯️",
     "Strong female lead 👩‍🚀",
     "Found family trope 🫶",
     "Plot twist required 🔀",
