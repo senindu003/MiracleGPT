@@ -331,16 +331,24 @@ export default function Episodes({ storyData, currentUser, onStorySaved }) {
           <div className="mt-6 flex space-x-4">
             <button
               onClick={handleRestart}
-              className="rounded-md bg-purple-700 text-white py-2 px-4 hover:bg-purple-600 transition"
+              className="rounded-md bg-blue-600 text-white py-2 px-4 hover:bg-blue-500 transition"
               disabled={showFullStory}
             >
-              Restart 🔄
+              Try Again with different choices 🔄
             </button>
             <button
               onClick={handleGetStory}
               className="rounded-md bg-green-600 text-white py-2 px-4 hover:bg-green-500 transition"
             >
               Get Wireframe
+            </button>
+            <button
+              className="rounded-md bg-red-600 text-white py-2 px-4 hover:bg-red-500 transition"
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              Create new
             </button>
           </div>
         )}

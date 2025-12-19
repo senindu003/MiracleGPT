@@ -119,7 +119,7 @@ const Home = () => {
   };
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   return (
@@ -189,8 +189,8 @@ const Home = () => {
               >
                 <a
                   onClick={() => {
-                    closeNav();
-                    window.scrollTo(0, 0);
+                    setStoryData({});
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className="text-gray-400 text-base hover:text-white transition-colors cursor-pointer"
                 >
@@ -272,6 +272,7 @@ const Home = () => {
             onClick={() => {
               localStorage.removeItem("token");
               localStorage.removeItem("user");
+              localStorage.clear();
               navigate("/login", { replace: true });
               closeNav();
             }}
