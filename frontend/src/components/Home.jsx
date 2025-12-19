@@ -341,7 +341,8 @@ const Home = () => {
           ) : (
             !isGenerating && (
               <div className="text-center text-gray-500 mt-10 text-xl">
-                Enter your parameters above to generate a new interactive story!
+                Enter your parameters above to generate a new interactive
+                story!!
               </div>
             )
           )}
