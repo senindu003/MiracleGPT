@@ -79,7 +79,7 @@ Generate a branching interactive story with these specifications:
 - AUDIENCE: {user_request.audience} (make content appropriate for this age group)
 - EMOJI USAGE: {user_request.emojis}
 - SPECIAL REQUESTS: {user_request.specialRequests}
-- ADDITIONAL INSTRUCTIONS: {user_request.additionalInstructions}
+- ADDITIONAL INSTRUCTIONS: {user_request.additionalInstructions} plus, Story should sound more natural and conversational, making the explanation friendlier and more relatable. Humanise the output so it sounds like a helpful person speaking, and use a casual, empathetic tone throughout.
 
 STRUCTURE REQUIREMENTS:
 
